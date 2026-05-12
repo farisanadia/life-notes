@@ -1,16 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { notes } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { createNote } from '@/lib/actions/notes'
 
 export default async function NotesPage() {
-  const session = await auth()
-  if (!session?.user?.id) redirect('/login')
-
-  const userId = session.user.id
+  const userId = await requireAuth()
 
   const allNotes = await db
     .select()
@@ -29,8 +26,7 @@ export default async function NotesPage() {
         <form
           action={async () => {
             'use server'
-            const session = await auth()
-            if (!session?.user?.id) return
+            await requireAuth()
             const note = await createNote()
             redirect(`/notes/${note.id}`)
           }}

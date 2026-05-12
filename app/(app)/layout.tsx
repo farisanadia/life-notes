@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { folders, tags } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -10,10 +9,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-  if (!session?.user?.id) redirect('/login')
-
-  const userId = session.user.id
+  const userId = await requireAuth()
 
   const [userFolders, userTags] = await Promise.all([
     db.select().from(folders).where(eq(folders.userId, userId)),

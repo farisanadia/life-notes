@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -9,15 +9,13 @@ import { trashNote } from '@/lib/actions/notes'
 type Props = { params: Promise<{ id: string }> }
 
 export default async function NotePage({ params }: Props) {
-  const session = await auth()
-  if (!session?.user?.id) redirect('/login')
-
+  const userId = await requireAuth()
   const { id } = await params
 
   const [note] = await db
     .select()
     .from(notes)
-    .where(and(eq(notes.id, id), eq(notes.userId, session.user.id)))
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
 
   if (!note || note.isTrashed) notFound()
 
