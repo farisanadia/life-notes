@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useTransition, useState } from 'react'
 import { useDebouncedCallback } from 'use-debounce'
+import { useTheme } from 'next-themes'
 import { updateNote } from '@/lib/actions/notes'
 import type { Note } from '@/lib/db/schema'
 
@@ -18,6 +19,7 @@ export function NoteEditor({ note }: Props) {
   const [content, setContent] = useState(note.content)
   const [saving, setSaving]   = useState(false)
   const [, startTransition]   = useTransition()
+  const { resolvedTheme }     = useTheme()
 
   const saveTitle = useDebouncedCallback((value: string) => {
     startTransition(async () => {
@@ -54,7 +56,7 @@ export function NoteEditor({ note }: Props) {
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden" data-color-mode="auto">
+      <div className="flex-1 overflow-hidden" data-color-mode={resolvedTheme === 'dark' ? 'dark' : 'light'}>
         <MDEditor
           value={content}
           onChange={(val) => {
