@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Life Notes
 
-## Getting Started
+A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisanadia.com). Built to replace scattered notes across devices — with sync, full-text search, folder/tag organisation, and a client-side encrypted vault for secrets.
 
-First, run the development server:
+## Stack
+
+| Concern | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Database | Neon (serverless PostgreSQL) |
+| ORM | Drizzle ORM |
+| Auth | NextAuth.js v5 (Credentials) |
+| Session store | Upstash Redis (rate limiting + session revocation) |
+| Editor | @uiw/react-md-editor (split-pane Markdown) |
+| Styling | Tailwind CSS v4 |
+| Deployment | Vercel + Cloudflare DNS |
+
+## Features by Phase
+
+### Phase 1 — Foundation & Auth (complete)
+- Single-user credential login (username + bcrypt password)
+- JWT sessions with per-token revocation via Redis
+- IP-based login rate limiting (10 attempts / 15-minute window, backed by Redis)
+- Admin API key endpoint to clear a rate-limited IP: `DELETE /api/rate-limit/:ip`
+- Light / dark / system theme toggle (persisted via next-themes)
+- Route protection via `proxy.ts`
+
+### Phase 2 — Notes, Folders, Tags (complete)
+- Create, edit, trash, restore, and delete notes
+- Split-pane Markdown editor with 800ms debounced autosave
+- Pin notes to the top of the list
+- Folder and tag management (create, rename, delete)
+- Assign and remove tags per note with ownership enforcement
+- Move notes between folders
+- Sidebar showing all folders and tags
+
+### Phase 3 — Full-Text Search (planned)
+- PostgreSQL `tsvector` GENERATED column with GIN index
+- `ts_headline` excerpts with highlighted matches
+- Search bar with debounced `?q=` routing
+
+### Phase 4 — Encrypted Vault (planned)
+- Client-side encryption via Web Crypto API (PBKDF2 + AES-GCM)
+- Master password derived key stored in React context only — never persisted
+- Server stores opaque ciphertext blobs; plaintext never leaves the browser
+
+### Phase 5 — Semantic Search (planned)
+- pgvector extension on Neon
+- Note embeddings via OpenAI `text-embedding-3-small`
+- Hybrid search: PostgreSQL FTS + vector cosine similarity
+
+## Security
+
+- Passwords hashed with bcrypt (cost 12), stored base64-encoded in env to avoid dotenv interpolation issues
+- All server actions call `requireAuthStrict()` — JWT decode + Redis revocation check
+- Page renders call `requireAuth()` — JWT decode only (no network, fast)
+- Every DB query is scoped with `WHERE user_id = $userId` — no cross-user data leakage
+- Session tokens are blocklisted in Redis on sign-out (TTL = session max age)
+- Rate limiting resets on successful login; counts only failed attempts
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required environment variables in `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+DATABASE_URL=
+AUTH_SECRET=
+ADMIN_USERNAME=
+ADMIN_PASSWORD_HASH_B64=   # base64-encoded bcrypt hash
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+ADMIN_API_KEY=             # for the rate-limit clear endpoint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Generate the password hash:
+```bash
+node -e "require('bcryptjs').hash('yourpassword', 12).then(h => console.log(Buffer.from(h).toString('base64')))"
+```
 
-## Learn More
+## Database
 
-To learn more about Next.js, take a look at the following resources:
+Schema is managed with Drizzle ORM. Push changes to Neon:
+```bash
+npx drizzle-kit push
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Tables: `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Testing
 
-## Deploy on Vercel
+```bash
+npm test
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+93 tests covering auth guards, rate limiting, login action, and all note/folder/tag server actions. Mocks are used for Redis, Neon, and NextAuth — no live connections required.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## CI/CD
+
+GitHub Actions runs `tsc` and `vitest` on every push and pull request targeting `main`. Merging to `main` triggers an automatic production deployment on Vercel.
