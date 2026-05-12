@@ -4,6 +4,7 @@ import { db } from '@/lib/db/index'
 import { notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { NoteEditor } from '@/components/notes/NoteEditor'
+import { BackButton } from '@/components/notes/BackButton'
 import { trashNote } from '@/lib/actions/notes'
 
 type Props = { params: Promise<{ id: string }> }
@@ -22,7 +23,8 @@ export default async function NotePage({ params }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Note toolbar */}
-      <div className="flex items-center justify-end px-4 py-2 border-b border-border gap-2">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border gap-2">
+        <BackButton />
         <form
           action={async () => {
             'use server'
