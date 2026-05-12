@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-vi.mock('@/lib/auth-guard', () => ({ requireAuth: vi.fn() }))
+vi.mock('@/lib/auth-guard', () => ({ requireAuthStrict: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 const { mockChain } = vi.hoisted(() => {
@@ -35,11 +35,11 @@ import {
   createNote, updateNote, trashNote, restoreNote,
   deleteNote, pinNote, moveNote,
 } from '@/lib/actions/notes'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 
-const mockRequireAuth   = vi.mocked(requireAuth)
+const mockRequireAuthStrict   = vi.mocked(requireAuthStrict)
 const mockRevalidate    = vi.mocked(revalidatePath)
 const mockInsert        = vi.mocked(db.insert)
 const mockUpdate        = vi.mocked(db.update)
@@ -51,7 +51,7 @@ const mockNote = { id: NOTE_ID, userId: USER_ID, title: 'Test', content: '' }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockRequireAuth.mockResolvedValue(USER_ID)
+  mockRequireAuthStrict.mockResolvedValue(USER_ID)
   // Restore chain behaviour for all methods
   for (const key of Object.keys(mockChain)) {
     mockChain[key].mockReturnValue(mockChain)
@@ -64,7 +64,7 @@ beforeEach(() => {
 
 describe('createNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(createNote()).rejects.toThrow('Unauthorized')
   })
 
@@ -105,7 +105,7 @@ describe('createNote', () => {
 
 describe('updateNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(updateNote(NOTE_ID, { title: 'x' })).rejects.toThrow('Unauthorized')
   })
 
@@ -144,7 +144,7 @@ describe('updateNote', () => {
 
 describe('trashNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(trashNote(NOTE_ID)).rejects.toThrow('Unauthorized')
   })
 
@@ -166,7 +166,7 @@ describe('trashNote', () => {
 
 describe('restoreNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(restoreNote(NOTE_ID)).rejects.toThrow('Unauthorized')
   })
 
@@ -187,7 +187,7 @@ describe('restoreNote', () => {
 
 describe('deleteNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(deleteNote(NOTE_ID)).rejects.toThrow('Unauthorized')
   })
 
@@ -206,7 +206,7 @@ describe('deleteNote', () => {
 
 describe('pinNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(pinNote(NOTE_ID, true)).rejects.toThrow('Unauthorized')
   })
 
@@ -234,7 +234,7 @@ describe('pinNote', () => {
 
 describe('moveNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(moveNote(NOTE_ID, 'folder-1')).rejects.toThrow('Unauthorized')
   })
 

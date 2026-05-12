@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 
-vi.mock('@/lib/auth-guard', () => ({ requireAuth: vi.fn() }))
+vi.mock('@/lib/auth-guard', () => ({ requireAuthStrict: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 const { mockChain } = vi.hoisted(() => {
@@ -32,11 +32,11 @@ vi.mock('@/lib/db/schema', () => ({ tags: {}, noteTags: {}, notes: {} }))
 vi.mock('drizzle-orm', () => ({ eq: vi.fn(), and: vi.fn() }))
 
 import { createTag, deleteTag, tagNote, untagNote } from '@/lib/actions/tags'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 
-const mockRequireAuth = vi.mocked(requireAuth)
+const mockRequireAuthStrict = vi.mocked(requireAuthStrict)
 const mockRevalidate  = vi.mocked(revalidatePath)
 const mockInsert      = vi.mocked(db.insert)
 const mockDelete      = vi.mocked(db.delete)
@@ -48,7 +48,7 @@ const mockTag = { id: TAG_ID, userId: USER_ID, name: 'work', color: null }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockRequireAuth.mockResolvedValue(USER_ID)
+  mockRequireAuthStrict.mockResolvedValue(USER_ID)
   mockChain.returning.mockResolvedValue([mockTag])
   mockChain.where.mockResolvedValue([{ id: NOTE_ID }])
   mockChain.onConflictDoNothing.mockResolvedValue(undefined)
@@ -58,7 +58,7 @@ beforeEach(() => {
 
 describe('createTag', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(createTag('work')).rejects.toThrow('Unauthorized')
   })
 
@@ -99,7 +99,7 @@ describe('createTag', () => {
 
 describe('deleteTag', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(deleteTag(TAG_ID)).rejects.toThrow('Unauthorized')
   })
 
@@ -118,7 +118,7 @@ describe('deleteTag', () => {
 
 describe('tagNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(tagNote(NOTE_ID, TAG_ID)).rejects.toThrow('Unauthorized')
   })
 
@@ -150,7 +150,7 @@ describe('tagNote', () => {
 
 describe('untagNote', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(untagNote(NOTE_ID, TAG_ID)).rejects.toThrow('Unauthorized')
   })
 

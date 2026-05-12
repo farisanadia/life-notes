@@ -1,13 +1,13 @@
 'use server'
 
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { tags, noteTags, notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function createTag(name: string, color?: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   const [tag] = await db
     .insert(tags)
@@ -19,7 +19,7 @@ export async function createTag(name: string, color?: string) {
 }
 
 export async function deleteTag(id: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .delete(tags)
@@ -29,7 +29,7 @@ export async function deleteTag(id: string) {
 }
 
 export async function tagNote(noteId: string, tagId: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   // Verify the note belongs to this user before tagging
   const [note] = await db
@@ -45,7 +45,7 @@ export async function tagNote(noteId: string, tagId: string) {
 }
 
 export async function untagNote(noteId: string, tagId: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   // Verify the note belongs to this user before untagging
   const [note] = await db

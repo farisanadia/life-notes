@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 
-vi.mock('@/lib/auth-guard', () => ({ requireAuth: vi.fn() }))
+vi.mock('@/lib/auth-guard', () => ({ requireAuthStrict: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 const { mockChain } = vi.hoisted(() => {
@@ -29,11 +29,11 @@ vi.mock('@/lib/db/schema', () => ({ folders: {} }))
 vi.mock('drizzle-orm', () => ({ eq: vi.fn(), and: vi.fn() }))
 
 import { createFolder, renameFolder, deleteFolder } from '@/lib/actions/folders'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 
-const mockRequireAuth = vi.mocked(requireAuth)
+const mockRequireAuthStrict = vi.mocked(requireAuthStrict)
 const mockRevalidate  = vi.mocked(revalidatePath)
 const mockInsert      = vi.mocked(db.insert)
 const mockDelete      = vi.mocked(db.delete)
@@ -44,7 +44,7 @@ const mockFolder = { id: FOLDER_ID, userId: USER_ID, name: 'My Folder', parentId
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockRequireAuth.mockResolvedValue(USER_ID)
+  mockRequireAuthStrict.mockResolvedValue(USER_ID)
   for (const key of Object.keys(mockChain)) {
     mockChain[key].mockReturnValue(mockChain)
   }
@@ -55,7 +55,7 @@ beforeEach(() => {
 
 describe('createFolder', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(createFolder('Work')).rejects.toThrow('Unauthorized')
   })
 
@@ -96,7 +96,7 @@ describe('createFolder', () => {
 
 describe('renameFolder', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(renameFolder(FOLDER_ID, 'New')).rejects.toThrow('Unauthorized')
   })
 
@@ -134,7 +134,7 @@ describe('renameFolder', () => {
 
 describe('deleteFolder', () => {
   it('requires authentication', async () => {
-    mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
     await expect(deleteFolder(FOLDER_ID)).rejects.toThrow('Unauthorized')
   })
 

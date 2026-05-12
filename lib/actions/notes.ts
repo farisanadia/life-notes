@@ -1,13 +1,13 @@
 'use server'
 
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function createNote(folderId?: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   const [note] = await db
     .insert(notes)
@@ -22,7 +22,7 @@ export async function updateNote(
   id: string,
   data: { title?: string; content?: string },
 ) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   const [note] = await db
     .update(notes)
@@ -38,7 +38,7 @@ export async function updateNote(
 }
 
 export async function trashNote(id: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .update(notes)
@@ -50,7 +50,7 @@ export async function trashNote(id: string) {
 }
 
 export async function restoreNote(id: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .update(notes)
@@ -61,7 +61,7 @@ export async function restoreNote(id: string) {
 }
 
 export async function deleteNote(id: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .delete(notes)
@@ -71,7 +71,7 @@ export async function deleteNote(id: string) {
 }
 
 export async function pinNote(id: string, isPinned: boolean) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .update(notes)
@@ -82,7 +82,7 @@ export async function pinNote(id: string, isPinned: boolean) {
 }
 
 export async function moveNote(id: string, folderId: string | null) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .update(notes)

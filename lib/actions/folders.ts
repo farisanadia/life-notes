@@ -1,13 +1,13 @@
 'use server'
 
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuthStrict } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { folders } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function createFolder(name: string, parentId?: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   const [folder] = await db
     .insert(folders)
@@ -19,7 +19,7 @@ export async function createFolder(name: string, parentId?: string) {
 }
 
 export async function renameFolder(id: string, name: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   const [folder] = await db
     .update(folders)
@@ -34,7 +34,7 @@ export async function renameFolder(id: string, name: string) {
 }
 
 export async function deleteFolder(id: string) {
-  const userId = await requireAuth()
+  const userId = await requireAuthStrict()
 
   await db
     .delete(folders)
