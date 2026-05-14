@@ -92,8 +92,13 @@ function buildDecorations(view: EditorView): DecorationSet {
       }
 
       if (MARKER_NODES.has(name)) {
+        // Fenced-code ``` markers are multi-line, so hiding them off the
+        // active line leaves the user staring at an unframed code body.
+        // Inline `code` backticks stay hideable — they sit on a single line
+        // and reading without them matches the rendered output.
+        const inFence = name === 'CodeMark' && node.node.parent?.name === 'FencedCode'
         const lineNo = state.doc.lineAt(node.from).number
-        if (activeLines.has(lineNo)) {
+        if (inFence || activeLines.has(lineNo)) {
           decos.push(Decoration.mark({ class: 'cm-md-marker' }).range(node.from, node.to))
         } else {
           // Swallow the trailing space after a heading's "#" as well.

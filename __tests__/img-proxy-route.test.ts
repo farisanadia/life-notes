@@ -43,7 +43,7 @@ function fakeUpstream({
 }) {
   const headers = new Headers({ 'content-type': contentType })
   if (contentLength) headers.set('content-length', contentLength)
-  return new Response(body, { status, headers })
+  return new Response(body as BodyInit, { status, headers })
 }
 
 describe('GET /api/img-proxy', () => {
