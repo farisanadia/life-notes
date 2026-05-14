@@ -9,9 +9,10 @@ import type { Folder, Tag } from '@/lib/db/schema'
 interface Props {
   folders: Folder[]
   tags:    Tag[]
+  isAdmin: boolean
 }
 
-export function Sidebar({ folders, tags }: Props) {
+export function Sidebar({ folders, tags, isAdmin }: Props) {
   const pathname = usePathname()
 
   const isActive = (href: string) =>
@@ -95,11 +96,12 @@ export function Sidebar({ folders, tags }: Props) {
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-border">
+      <div className="border-t border-border p-2">
+        {isAdmin && navLink('/settings/users', 'User accounts')}
         <form action={signOutAction}>
           <button
             type="submit"
-            className="w-full text-left text-sm text-muted-fg hover:text-foreground hover:bg-surface-hover rounded-md px-2 py-1.5 transition-colors"
+            className="w-full rounded-md px-2 py-1.5 text-left text-sm text-muted-fg transition-colors hover:bg-surface-hover hover:text-foreground"
           >
             Sign out
           </button>

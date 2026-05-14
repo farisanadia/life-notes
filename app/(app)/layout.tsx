@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/auth-guard'
+import { ADMIN_USER_ID, requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { folders, tags } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -18,7 +18,11 @@ export default async function AppLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar folders={userFolders} tags={userTags} />
+      <Sidebar
+        folders={userFolders}
+        tags={userTags}
+        isAdmin={userId === ADMIN_USER_ID}
+      />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   )

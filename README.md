@@ -20,7 +20,10 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 ## Features by Phase
 
 ### Phase 1 — Foundation & Auth (complete)
-- Single-user credential login (username + bcrypt password)
+- **Multi-user** with credential login (username + bcrypt password)
+  - One env-seeded **admin** account (`ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH_B64`); env stays the source of truth for admin credentials
+  - Admin creates additional accounts at `/settings/users` (no public registration)
+  - Per-user data isolation: every server-side query is scoped by `userId`; no cross-user reads
 - JWT sessions with per-token revocation via Redis
 - IP-based login rate limiting (10 attempts / 15-minute window, backed by Redis)
 - Admin API key endpoint to clear a rate-limited IP: `DELETE /api/rate-limit/:ip`
@@ -57,12 +60,14 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 
 ## Security
 
-- Passwords hashed with bcrypt (cost 12), stored base64-encoded in env to avoid dotenv interpolation issues
-- All server actions call `requireAuthStrict()` — JWT decode + Redis revocation check
-- Page renders call `requireAuth()` — JWT decode only (no network, fast)
-- Every DB query is scoped with `WHERE user_id = $userId` — no cross-user data leakage
-- Session tokens are blocklisted in Redis on sign-out (TTL = session max age)
-- Rate limiting resets on successful login; counts only failed attempts
+- **Admin** password lives in env (`ADMIN_PASSWORD_HASH_B64`, bcrypt cost 12, base64-encoded to dodge dotenv interpolation); the admin row in `users` is auto-upserted on each successful admin login with an opaque placeholder hash.
+- **Other accounts** have their bcrypt hashes (cost 12) stored in `users.password_hash`. Created admin-side at `/settings/users` — no public registration.
+- All server actions call `requireAuthStrict()` (JWT + Redis revocation); admin-only actions go through `requireAdmin()` which adds an `userId === 'admin'` check.
+- Page renders call `requireAuth()` (JWT only, fast); admin pages use `requireAdminAuth()` and `notFound()` on non-admin so the route's existence isn't leaked.
+- Every DB query is scoped with `WHERE user_id = $userId` — no cross-user data leakage.
+- Session tokens are blocklisted in Redis on sign-out (TTL = session max age).
+- Rate limiting resets on successful login; counts only failed attempts.
+- **Caveat**: deleting a user does not yet revoke their existing JWT (max 7d lifetime). All their data queries return empty (scoped by `userId`), so the deleted account sees no data, but the token still decodes. Future hardening: track active sessions per user.
 
 ## Local Development
 
@@ -95,7 +100,7 @@ Schema is managed with Drizzle ORM. Push changes to Neon:
 npx drizzle-kit push
 ```
 
-Tables: `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
+Tables: `users`, `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 
 ## Testing
 
@@ -103,7 +108,7 @@ Tables: `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 npm test
 ```
 
-109 tests covering auth guards, rate limiting, login action, and all note/folder/tag server actions (including the new `updateNotePosition`, `updateNoteSize`, `updateNoteColor`, `updateNoteZIndex`, `setNoteCollapsed`). Mocks are used for Redis, Neon, and NextAuth — no live connections required.
+132 tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions (including `createUserAction`, `deleteUserAction`, `updateNotePosition`, `updateNoteSize`, `updateNoteColor`, `updateNoteZIndex`, `setNoteCollapsed`). Mocks are used for Redis, Neon, and NextAuth — no live connections required.
 
 ## CI/CD
 

@@ -10,6 +10,23 @@ import {
 import { relations } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 
+// ─── Users ───────────────────────────────────────────────────────────────────
+// The single env-based admin (id='admin') is upserted on each successful login
+// so it always has a row alongside accounts the admin creates from the UI.
+// `userId` columns on other tables are plain text (no FK) — keeps deletion of
+// a user's data the app's responsibility, matching how the app worked before
+// multi-user existed.
+
+export const users = pgTable('users', {
+  id:           text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  username:     text('username').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  // Usernames stored lowercased; uniqueness is plain (no CITEXT needed).
+  unique('users_username_unique').on(t.username),
+])
+
 // ─── Folders ─────────────────────────────────────────────────────────────────
 
 export const folders = pgTable('folders', {
@@ -108,3 +125,4 @@ export type Note        = typeof notes.$inferSelect
 export type Tag         = typeof tags.$inferSelect
 export type NoteTag     = typeof noteTags.$inferSelect
 export type VaultEntry  = typeof vaultEntries.$inferSelect
+export type User        = typeof users.$inferSelect

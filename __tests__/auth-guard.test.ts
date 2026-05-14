@@ -4,7 +4,7 @@ import type { Session } from 'next-auth'
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/session-blocklist', () => ({ isSessionRevoked: vi.fn() }))
 
-import { requireAuth, requireAuthStrict } from '@/lib/auth-guard'
+import { requireAuth, requireAuthStrict, requireAdmin, requireAdminAuth } from '@/lib/auth-guard'
 import { auth } from '@/lib/auth'
 import { isSessionRevoked } from '@/lib/session-blocklist'
 
@@ -94,6 +94,69 @@ describe('requireAuthStrict', () => {
   it('checks the revocation list', async () => {
     mockAuth.mockResolvedValue(validSession)
     await requireAuthStrict()
+    expect(mockIsSessionRevoked).toHaveBeenCalledOnce()
+  })
+})
+
+const nonAdminSession = {
+  user: { id: 'user-uuid-123', jti: 'test-jti-456', name: 'alice', email: '' },
+  expires: '',
+}
+
+// ── requireAdminAuth (fast page check) ────────────────────────────────────────
+
+describe('requireAdminAuth', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns the userId when the admin is signed in', async () => {
+    mockAuth.mockResolvedValue(validSession)
+    expect(await requireAdminAuth()).toBe('admin')
+  })
+
+  it('throws Unauthorized when no session', async () => {
+    mockAuth.mockResolvedValue(null)
+    await expect(requireAdminAuth()).rejects.toThrow('Unauthorized')
+  })
+
+  it('throws Forbidden when a non-admin is signed in', async () => {
+    mockAuth.mockResolvedValue(nonAdminSession)
+    await expect(requireAdminAuth()).rejects.toThrow('Forbidden')
+  })
+
+  it('does NOT check the revocation list', async () => {
+    mockAuth.mockResolvedValue(validSession)
+    await requireAdminAuth()
+    expect(mockIsSessionRevoked).not.toHaveBeenCalled()
+  })
+})
+
+// ── requireAdmin (strict server-action check) ─────────────────────────────────
+
+describe('requireAdmin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockIsSessionRevoked.mockResolvedValue(false)
+  })
+
+  it('returns the userId when the admin is signed in and not revoked', async () => {
+    mockAuth.mockResolvedValue(validSession)
+    expect(await requireAdmin()).toBe('admin')
+  })
+
+  it('throws Forbidden when a non-admin is signed in', async () => {
+    mockAuth.mockResolvedValue(nonAdminSession)
+    await expect(requireAdmin()).rejects.toThrow('Forbidden')
+  })
+
+  it('throws Unauthorized when the admin session was revoked', async () => {
+    mockAuth.mockResolvedValue(validSession)
+    mockIsSessionRevoked.mockResolvedValue(true)
+    await expect(requireAdmin()).rejects.toThrow('Unauthorized')
+  })
+
+  it('checks the revocation list', async () => {
+    mockAuth.mockResolvedValue(validSession)
+    await requireAdmin()
     expect(mockIsSessionRevoked).toHaveBeenCalledOnce()
   })
 })
