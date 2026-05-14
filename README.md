@@ -19,18 +19,19 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 
 ## Features by Phase
 
+> **Status: actively building Phase 2.** Phase 1 is complete and deployed; Phase 2 has the spatial canvas, live-preview editor, and multi-user accounts done — folders and tag grouping are next.
+
 ### Phase 1 — Foundation & Auth (complete)
-- **Multi-user** with credential login (username + bcrypt password)
-  - One env-seeded **admin** account (`ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH_B64`); env stays the source of truth for admin credentials
-  - Admin creates additional accounts at `/settings/users` (no public registration)
-  - Per-user data isolation: every server-side query is scoped by `userId`; no cross-user reads
+- Single-user credential login (username + bcrypt password) — extended into the multi-user model in Phase 2
 - JWT sessions with per-token revocation via Redis
 - IP-based login rate limiting (10 attempts / 15-minute window, backed by Redis)
 - Admin API key endpoint to clear a rate-limited IP: `DELETE /api/rate-limit/:ip`
 - Light / dark / system theme toggle (persisted via next-themes)
 - Route protection via `proxy.ts`
 
-### Phase 2 — Notes, Folders, Tags (complete)
+### Phase 2 — Notes UX & Multi-User (in progress)
+
+**Done so far:**
 - **Spatial canvas**, not a list — notes are draggable sticky cards on a free 2D board (`@dnd-kit`). Position, size, color, z-order, and collapsed state all persist per note.
 - **Inline live-preview editing** on each card via CodeMirror 6 with a custom `livePreview` extension: markdown is styled as you type (bold, italic, code, headings, bullets, etc.) and syntax markers hide off the active line — Obsidian-style.
 - **Opt-in full-screen editor** at `/notes/[id]`, reached via the expand icon on a card. Same CodeMirror live editor but roomier, with a formatting toolbar (bold / italic / strikethrough / inline code / heading / list / task list / quote / code block / table / horizontal rule / image / link).
@@ -38,10 +39,17 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 - **Zoom & pan** — buttons + ⌘/ctrl-scroll to zoom toward the cursor (20–100%); a "Fit" button frames every note in view at once for spotting groupings.
 - **Safer destructive actions** — trash sits behind a `MoreMenu` overflow with a two-click confirmation (3-second arm window), so it's never adjacent to commonly-clicked controls.
 - **Resting cards** show rendered markdown (`@uiw/react-md-editor` preview), a hover color picker, expand / collapse / more buttons, and a corner resize handle.
-- **Tag filter bar** at the top dims non-matching cards on the canvas; click multiple tags to combine.
+- **Tag filter bar** at the top of the canvas dims non-matching cards (visual filter only — see "Still to do" for assignment).
 - **New note** drops a card at the centre of the current viewport in immediate edit mode — no extra click.
 - **Click-outside or Escape** exits edit mode.
-- Pin, trash, restore, and delete still work; folders + tags still managed in the sidebar with ownership-enforced server actions.
+- Pin, trash, restore, and delete from the canvas.
+- **Multi-user accounts**: one env-seeded admin (`ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH_B64`) plus additional accounts created admin-side at `/settings/users`. Per-user data isolation enforced by `userId` scoping on every server query.
+
+**Still to do:**
+- **Folder management from the UI** — schema and `createFolder` / `moveNote` server actions exist, but no canvas affordance to create folders or assign notes to them. Sidebar lists folders but `/folders/[id]` pages don't exist yet.
+- **Tag assignment from the UI** — `tagNote` / `untagNote` actions exist, but the canvas has no way to add or remove tags on a card. Likewise no `/tags/[id]` page.
+- **Visual grouping on the canvas** by folder or tag (e.g. coloured zones, collapsing by group).
+- **Vault UI** — sidebar link exists, page is empty (Phase 4 territory).
 
 ### Phase 3 — Full-Text Search (planned)
 - PostgreSQL `tsvector` GENERATED column with GIN index
