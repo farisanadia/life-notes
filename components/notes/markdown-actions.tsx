@@ -49,8 +49,10 @@ export const MARKDOWN_ACTIONS: MarkdownActionDef[] = [
     action: { kind: 'block', text: TABLE_TEMPLATE, cursorOffset: 2 } },
   { title: 'Horizontal rule', icon: <span className="text-base leading-none">―</span>,
     action: { kind: 'block', text: '---\n' } },
+  // Placeholder is `https://` rather than `url` so the live preview's
+  // <img>/<a> doesn't auto-fetch a relative `/url` (404 + privacy leak).
   { title: 'Image', icon: <span className="text-[10px]">img</span>,
-    action: { kind: 'wrap', before: '![', after: '](url)' } },
+    action: { kind: 'wrap', before: '![', after: '](https://)' } },
   { title: 'Link',  icon: <span className="text-[11px] underline">link</span>,
-    action: { kind: 'wrap', before: '[', after: '](url)' } },
+    action: { kind: 'wrap', before: '[', after: '](https://)' } },
 ]

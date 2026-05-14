@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useDebouncedCallback } from 'use-debounce'
+import rehypeSanitize from 'rehype-sanitize'
+import { rehypeProxyImages } from '@/lib/proxy-img'
 import { updateNote, updateNoteColor } from '@/lib/actions/notes'
 import { NOTE_COLOR_KEYS, NOTE_SWATCHES, noteColorClass } from '@/lib/note-colors'
 import type { NoteWithTags } from '@/components/notes/NotesCanvas'
@@ -21,6 +23,12 @@ const MarkdownPreview = dynamic(
   { ssr: false },
 )
 
+// @uiw/react-markdown-preview applies rehype-raw by default and ships no
+// sanitizer, so raw <script>/<img onerror>/<iframe> in a note would otherwise
+// reach the DOM. rehype-sanitize runs after rehype-raw and strips them.
+// Sanitize first so the proxy rewriter only sees already-validated URLs.
+const REHYPE_PLUGINS = [rehypeSanitize, rehypeProxyImages]
+
 // Rendered markdown for a card. Memoised on the source string so other cards
 // don't re-parse markdown when an unrelated note autosaves.
 const NoteMarkdown = memo(function NoteMarkdown({ source }: { source: string }) {
@@ -29,6 +37,7 @@ const NoteMarkdown = memo(function NoteMarkdown({ source }: { source: string }) 
       <MarkdownPreview
         source={source.trim() || '*Empty note*'}
         style={{ background: 'transparent' }}
+        rehypePlugins={REHYPE_PLUGINS}
       />
     </div>
   )

@@ -68,6 +68,7 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 
 ## Security
 
+### Authentication & data isolation
 - **Admin** password lives in env (`ADMIN_PASSWORD_HASH_B64`, bcrypt cost 12, base64-encoded to dodge dotenv interpolation); the admin row in `users` is auto-upserted on each successful admin login with an opaque placeholder hash.
 - **Other accounts** have their bcrypt hashes (cost 12) stored in `users.password_hash`. Created admin-side at `/settings/users` — no public registration.
 - All server actions call `requireAuthStrict()` (JWT + Redis revocation); admin-only actions go through `requireAdmin()` which adds an `userId === 'admin'` check.
@@ -76,6 +77,34 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 - Session tokens are blocklisted in Redis on sign-out (TTL = session max age).
 - Rate limiting resets on successful login; counts only failed attempts.
 - **Caveat**: deleting a user does not yet revoke their existing JWT (max 7d lifetime). All their data queries return empty (scoped by `userId`), so the deleted account sees no data, but the token still decodes. Future hardening: track active sessions per user.
+
+### Content Security Policy & headers (proxy.ts)
+Per-request nonce CSP applied to every response:
+- `script-src 'self' 'nonce-…' 'strict-dynamic'` — only Next.js-emitted scripts run; no inline-script injection from rendered markdown can execute.
+- `img-src 'self' data: blob:` — external images blocked at the browser level (see image proxy below).
+- `style-src 'self' 'unsafe-inline'` — needed for Tailwind / CodeMirror / dnd-kit inline styles.
+- `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`.
+- `'unsafe-eval'` is added only in dev for React's error overlay.
+
+Companion headers: `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a lockdown `Permissions-Policy`, and `Strict-Transport-Security: max-age=31536000; includeSubDomains` in production.
+
+### Markdown XSS hardening
+`@uiw/react-markdown-preview` parses raw HTML by default. The render pipeline now runs `rehype-sanitize` with the default GitHub schema, which strips `<script>`, `<iframe>`, `<object>`, event handlers, and `javascript:` URLs before any DOM commit.
+
+### Image proxy & SSRF protection (`/api/img-proxy`)
+External images can't reach the browser directly (CSP). Instead, a rehype plugin rewrites every external `<img src>` to flow through `/api/img-proxy?url=…`, which fetches the bytes server-side and re-serves them under our origin. The proxy:
+
+- Requires an authenticated session.
+- Allows only `http://` / `https://` and ports 80 / 443.
+- Resolves DNS itself and rejects every private/loopback/link-local/CGNAT/cloud-metadata/multicast/reserved IPv4 range, plus IPv6 unique-local / link-local / multicast / documentation / NAT64 ranges. **Both notation forms** of IPv4-mapped IPv6 are caught (dotted `::ffff:127.0.0.1` and hex `::ffff:7f00:1` resolve to the same loopback address).
+- Plugs the custom DNS resolver into undici's connection pool, closing the DNS-rebinding TOCTOU window — the same resolved IPs used for the check are used for the connect.
+- Caps response size (10 MB), wall-clock time (8 s), and requires `Content-Type: image/*`.
+- Strips client identifying headers from the outbound fetch (no cookies, referer, or authorization).
+
+Caveat: redirect targets are re-checked for IP-privacy but not for port — a malicious upstream could 3xx to a non-standard port on a public host. Private networks remain unreachable; the residual risk is the proxy being used as a public-internet timing oracle. Tracked for hardening.
+
+### Test coverage
+`__tests__/ssrf.test.ts`, `__tests__/proxy-img.test.ts`, `__tests__/img-proxy-route.test.ts` — 65+ cases covering IP classifier corner cases (including the v4-mapped-IPv6 hex-notation bypass), URL/scheme/port validation, auth gating, content-type and size guards, and outbound request shape.
 
 ## Local Development
 
@@ -116,7 +145,7 @@ Tables: `users`, `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 npm test
 ```
 
-132 tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions (including `createUserAction`, `deleteUserAction`, `updateNotePosition`, `updateNoteSize`, `updateNoteColor`, `updateNoteZIndex`, `setNoteCollapsed`). Mocks are used for Redis, Neon, and NextAuth — no live connections required.
+212 tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions, the SSRF IP classifier (`lib/ssrf.ts`), the markdown image rewriter (`lib/proxy-img.ts`), and the `/api/img-proxy` route handler (auth, URL/port validation, content-type and size guards, outbound request shape). Mocks are used for Redis, Neon, NextAuth, and undici — no live connections required.
 
 ## CI/CD
 
