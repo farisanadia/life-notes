@@ -47,3 +47,37 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, sans-serif;
 }
+
+/* ── Notes board ────────────────────────────────────────────────────────── */
+/* Dotted "jotting pad" surface, distinct from sidebar/header chrome.        */
+.dotted-board {
+  background-color: var(--muted);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+.dark .dotted-board {
+  background-color: #141414;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.1px, transparent 1.2px);
+}
+
+/* Markdown preview sits on a light sticky surface — force dark, transparent text. */
+.sticky-preview .wmde-markdown {
+  background: transparent !important;
+  color: #171717 !important;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.sticky-preview .wmde-markdown * {
+  color: inherit;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+.sticky-preview .wmde-markdown code,
+.sticky-preview .wmde-markdown pre {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+/* Live editor sizing: comfortable inside the full editor screen, compact on cards. */
+.cm-variant-editor .cm-content {
+  font-size: 14.5px !important;
+  line-height: 1.6 !important;
+}

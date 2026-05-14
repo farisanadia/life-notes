@@ -34,6 +34,8 @@ vi.mock('drizzle-orm', () => ({ eq: vi.fn(), and: vi.fn() }))
 import {
   createNote, updateNote, trashNote, restoreNote,
   deleteNote, pinNote, moveNote,
+  updateNotePosition, updateNoteColor, updateNoteSize,
+  updateNoteZIndex, setNoteCollapsed,
 } from '@/lib/actions/notes'
 import { requireAuthStrict } from '@/lib/auth-guard'
 import { revalidatePath } from 'next/cache'
@@ -84,9 +86,16 @@ describe('createNote', () => {
   })
 
   it('inserts with the given folderId', async () => {
-    await createNote('folder-1')
+    await createNote({ folderId: 'folder-1' })
     expect(mockChain.values).toHaveBeenCalledWith(
       expect.objectContaining({ folderId: 'folder-1' }),
+    )
+  })
+
+  it('inserts at the given rounded position', async () => {
+    await createNote({ positionX: 120.7, positionY: 80.2 })
+    expect(mockChain.values).toHaveBeenCalledWith(
+      expect.objectContaining({ positionX: 121, positionY: 80 }),
     )
   })
 
@@ -254,6 +263,111 @@ describe('moveNote', () => {
 
   it('revalidates /notes', async () => {
     await moveNote(NOTE_ID, 'folder-1')
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── updateNotePosition ────────────────────────────────────────────────────────
+
+describe('updateNotePosition', () => {
+  it('requires authentication', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(updateNotePosition(NOTE_ID, 10, 20)).rejects.toThrow('Unauthorized')
+  })
+
+  it('sets rounded x and y coordinates', async () => {
+    await updateNotePosition(NOTE_ID, 10.6, 20.2)
+    expect(mockChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ positionX: 11, positionY: 20 }),
+    )
+  })
+
+  it('revalidates /notes', async () => {
+    await updateNotePosition(NOTE_ID, 10, 20)
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── updateNoteColor ───────────────────────────────────────────────────────────
+
+describe('updateNoteColor', () => {
+  it('requires authentication', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(updateNoteColor(NOTE_ID, 'blue')).rejects.toThrow('Unauthorized')
+  })
+
+  it('sets the color', async () => {
+    await updateNoteColor(NOTE_ID, 'blue')
+    expect(mockChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 'blue' }),
+    )
+  })
+
+  it('revalidates /notes', async () => {
+    await updateNoteColor(NOTE_ID, 'blue')
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── updateNoteSize ────────────────────────────────────────────────────────────
+
+describe('updateNoteSize', () => {
+  it('requires authentication', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(updateNoteSize(NOTE_ID, 300, 200)).rejects.toThrow('Unauthorized')
+  })
+
+  it('sets rounded width and height', async () => {
+    await updateNoteSize(NOTE_ID, 300.6, 200.3)
+    expect(mockChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 301, height: 200 }),
+    )
+  })
+
+  it('revalidates /notes', async () => {
+    await updateNoteSize(NOTE_ID, 300, 200)
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── updateNoteZIndex ──────────────────────────────────────────────────────────
+
+describe('updateNoteZIndex', () => {
+  it('requires authentication', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(updateNoteZIndex(NOTE_ID, 5)).rejects.toThrow('Unauthorized')
+  })
+
+  it('sets the rounded z-index', async () => {
+    await updateNoteZIndex(NOTE_ID, 5.8)
+    expect(mockChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ zIndex: 6 }),
+    )
+  })
+
+  it('revalidates /notes', async () => {
+    await updateNoteZIndex(NOTE_ID, 5)
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── setNoteCollapsed ──────────────────────────────────────────────────────────
+
+describe('setNoteCollapsed', () => {
+  it('requires authentication', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(setNoteCollapsed(NOTE_ID, true)).rejects.toThrow('Unauthorized')
+  })
+
+  it('sets isCollapsed', async () => {
+    await setNoteCollapsed(NOTE_ID, true)
+    expect(mockChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ isCollapsed: true }),
+    )
+  })
+
+  it('revalidates /notes', async () => {
+    await setNoteCollapsed(NOTE_ID, false)
     expect(mockRevalidate).toHaveBeenCalledWith('/notes')
   })
 })

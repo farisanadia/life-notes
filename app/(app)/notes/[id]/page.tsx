@@ -1,11 +1,10 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
 import { notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { NoteEditor } from '@/components/notes/NoteEditor'
 import { BackButton } from '@/components/notes/BackButton'
-import { trashNote } from '@/lib/actions/notes'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -22,26 +21,12 @@ export default async function NotePage({ params }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Note toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border gap-2">
+      <div className="flex items-center px-4 py-2 border-b border-border">
         <BackButton />
-        <form
-          action={async () => {
-            'use server'
-            await trashNote(id)
-            redirect('/notes')
-          }}
-        >
-          <button
-            type="submit"
-            className="text-xs text-muted-fg hover:text-foreground px-2 py-1 rounded hover:bg-surface-hover transition-colors"
-          >
-            Move to trash
-          </button>
-        </form>
       </div>
-
-      <NoteEditor note={note} />
+      <div className="min-h-0 flex-1">
+        <NoteEditor note={note} />
+      </div>
     </div>
   )
 }

@@ -11,7 +11,9 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 | ORM | Drizzle ORM |
 | Auth | NextAuth.js v5 (Credentials) |
 | Session store | Upstash Redis (rate limiting + session revocation) |
-| Editor | @uiw/react-md-editor (split-pane Markdown) |
+| Editor | CodeMirror 6 + `@codemirror/lang-markdown` with a custom live-preview extension |
+| Markdown render | `@uiw/react-md-editor` (preview only, on resting cards) |
+| Drag & drop | `@dnd-kit` |
 | Styling | Tailwind CSS v4 |
 | Deployment | Vercel + Cloudflare DNS |
 
@@ -26,13 +28,17 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 - Route protection via `proxy.ts`
 
 ### Phase 2 — Notes, Folders, Tags (complete)
-- Create, edit, trash, restore, and delete notes
-- Split-pane Markdown editor with 800ms debounced autosave
-- Pin notes to the top of the list
-- Folder and tag management (create, rename, delete)
-- Assign and remove tags per note with ownership enforcement
-- Move notes between folders
-- Sidebar showing all folders and tags
+- **Spatial canvas**, not a list — notes are draggable sticky cards on a free 2D board (`@dnd-kit`). Position, size, color, z-order, and collapsed state all persist per note.
+- **Inline live-preview editing** on each card via CodeMirror 6 with a custom `livePreview` extension: markdown is styled as you type (bold, italic, code, headings, bullets, etc.) and syntax markers hide off the active line — Obsidian-style.
+- **Opt-in full-screen editor** at `/notes/[id]`, reached via the expand icon on a card. Same CodeMirror live editor but roomier, with a formatting toolbar (bold / italic / strikethrough / inline code / heading / list / task list / quote / code block / table / horizontal rule / image / link).
+- **800ms debounced autosave** on title and content; ⌘B / ⌘I shortcuts in either editor.
+- **Zoom & pan** — buttons + ⌘/ctrl-scroll to zoom toward the cursor (20–100%); a "Fit" button frames every note in view at once for spotting groupings.
+- **Safer destructive actions** — trash sits behind a `MoreMenu` overflow with a two-click confirmation (3-second arm window), so it's never adjacent to commonly-clicked controls.
+- **Resting cards** show rendered markdown (`@uiw/react-md-editor` preview), a hover color picker, expand / collapse / more buttons, and a corner resize handle.
+- **Tag filter bar** at the top dims non-matching cards on the canvas; click multiple tags to combine.
+- **New note** drops a card at the centre of the current viewport in immediate edit mode — no extra click.
+- **Click-outside or Escape** exits edit mode.
+- Pin, trash, restore, and delete still work; folders + tags still managed in the sidebar with ownership-enforced server actions.
 
 ### Phase 3 — Full-Text Search (planned)
 - PostgreSQL `tsvector` GENERATED column with GIN index
@@ -97,7 +103,7 @@ Tables: `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 npm test
 ```
 
-93 tests covering auth guards, rate limiting, login action, and all note/folder/tag server actions. Mocks are used for Redis, Neon, and NextAuth — no live connections required.
+109 tests covering auth guards, rate limiting, login action, and all note/folder/tag server actions (including the new `updateNotePosition`, `updateNoteSize`, `updateNoteColor`, `updateNoteZIndex`, `setNoteCollapsed`). Mocks are used for Redis, Neon, and NextAuth — no live connections required.
 
 ## CI/CD
 

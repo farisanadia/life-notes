@@ -6,12 +6,21 @@ import { notes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
-export async function createNote(folderId?: string) {
+export async function createNote(opts?: {
+  folderId?: string
+  positionX?: number
+  positionY?: number
+}) {
   const userId = await requireAuthStrict()
 
   const [note] = await db
     .insert(notes)
-    .values({ userId, folderId: folderId ?? null })
+    .values({
+      userId,
+      folderId:  opts?.folderId ?? null,
+      positionX: opts?.positionX != null ? Math.round(opts.positionX) : 40,
+      positionY: opts?.positionY != null ? Math.round(opts.positionY) : 40,
+    })
     .returning()
 
   revalidatePath('/notes')
@@ -87,6 +96,61 @@ export async function moveNote(id: string, folderId: string | null) {
   await db
     .update(notes)
     .set({ folderId, updatedAt: new Date() })
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
+export async function updateNotePosition(id: string, x: number, y: number) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(notes)
+    .set({ positionX: Math.round(x), positionY: Math.round(y) })
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
+export async function updateNoteColor(id: string, color: string) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(notes)
+    .set({ color })
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
+export async function updateNoteSize(id: string, width: number, height: number) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(notes)
+    .set({ width: Math.round(width), height: Math.round(height) })
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
+export async function updateNoteZIndex(id: string, zIndex: number) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(notes)
+    .set({ zIndex: Math.round(zIndex) })
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
+export async function setNoteCollapsed(id: string, isCollapsed: boolean) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(notes)
+    .set({ isCollapsed })
     .where(and(eq(notes.id, id), eq(notes.userId, userId)))
 
   revalidatePath('/notes')

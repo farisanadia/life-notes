@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Session } from 'next-auth'
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/session-blocklist', () => ({ isSessionRevoked: vi.fn() }))
@@ -7,7 +8,9 @@ import { requireAuth, requireAuthStrict } from '@/lib/auth-guard'
 import { auth } from '@/lib/auth'
 import { isSessionRevoked } from '@/lib/session-blocklist'
 
-const mockAuth             = vi.mocked(auth)
+// auth() is overloaded in NextAuth v5; when called with no args it resolves to
+// Session | null — cast to that signature so the mock types correctly.
+const mockAuth             = vi.mocked(auth as unknown as () => Promise<Session | null>)
 const mockIsSessionRevoked = vi.mocked(isSessionRevoked)
 
 const validSession = {
