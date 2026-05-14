@@ -11,9 +11,11 @@ import {
 import {
   DndContext,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   createNote,
@@ -22,6 +24,7 @@ import {
   updateNoteZIndex,
   setNoteCollapsed,
   trashNote,
+  restoreNote,
 } from '@/lib/actions/notes'
 import { NoteCard, COLLAPSED_HEIGHT } from '@/components/notes/NoteCard'
 import type { Note, Tag } from '@/lib/db/schema'
@@ -32,6 +35,8 @@ export type NoteWithTags = Note & { tags: Tag[] }
 const CANVAS_MARGIN = 600
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 1
+const TRASH_DROP_ID = 'trash-zone'
+const UNDO_WINDOW_MS = 6000
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 
@@ -48,6 +53,8 @@ export function NotesCanvas({ notes }: Props) {
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [zoom, setZoom] = useState(1)
   const [autoEditId, setAutoEditId] = useState<string | null>(null)
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [undoToast, setUndoToast] = useState<{ id: string; title: string } | null>(null)
   const [isCreating, startCreate] = useTransition()
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -100,6 +107,13 @@ export function NotesCanvas({ notes }: Props) {
       pendingScroll.current = null
     }
   }, [zoom])
+
+  // Auto-dismiss the undo toast after the window expires.
+  useEffect(() => {
+    if (!undoToast) return
+    const t = window.setTimeout(() => setUndoToast(null), UNDO_WINDOW_MS)
+    return () => window.clearTimeout(t)
+  }, [undoToast])
 
   // Zoom changes keep the given viewport anchor point fixed on the canvas.
   function zoomTo(next: number, anchorX: number, anchorY: number) {
@@ -172,11 +186,22 @@ export function NotesCanvas({ notes }: Props) {
     return note.tags.some(t => activeTags.has(t.id))
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(String(event.active.id))
+  }
+
   function handleDragEnd(event: DragEndEvent) {
-    const { active, delta } = event
+    const { active, over, delta } = event
     const id = String(active.id)
+    setActiveDragId(null)
+
     const note = notes.find(n => n.id === id)
     if (!note) return
+
+    if (over?.id === TRASH_DROP_ID) {
+      handleTrash(note)
+      return
+    }
 
     const base = posOf(note)
     // delta is in screen pixels; convert to canvas units for the scaled board.
@@ -210,15 +235,29 @@ export function NotesCanvas({ notes }: Props) {
     setNoteCollapsed(id, next)
   }
 
+  function handleTrash(note: NoteWithTags) {
+    setUndoToast({ id: note.id, title: note.title || 'Untitled' })
+    trashNote(note.id)
+  }
+
+  function handleUndoTrash() {
+    if (!undoToast) return
+    const id = undoToast.id
+    setUndoToast(null)
+    restoreNote(id)
+  }
+
   function handleNewNote() {
     const el = scrollRef.current
     const z = zoomRef.current
     // Drop the new sticky in the centre of whatever the user is currently viewing.
     const x = el ? (el.scrollLeft + el.clientWidth / 2) / z - 120 : 40
     const y = el ? (el.scrollTop + el.clientHeight / 2) / z - 110 : 40
+    // Put the new card on top of every other card, otherwise it can spawn
+    // hidden behind one the user already raised.
+    const newZ = Math.max(0, ...notes.map(zOf)) + 1
     startCreate(async () => {
-      const note = await createNote({ positionX: x, positionY: y })
-      // Open the freshly created card straight into edit mode on the board.
+      const note = await createNote({ positionX: x, positionY: y, zIndex: newZ })
       setAutoEditId(note.id)
     })
   }
@@ -276,7 +315,12 @@ export function NotesCanvas({ notes }: Props) {
               <p className="text-xs">Click &ldquo;New note&rdquo; to get started.</p>
             </div>
           ) : (
-            <DndContext id="notes-canvas" sensors={sensors} onDragEnd={handleDragEnd}>
+            <DndContext
+              id="notes-canvas"
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
               {/* Sizer gives the scroll area the scaled extent */}
               <div
                 className="min-h-full min-w-full"
@@ -306,11 +350,14 @@ export function NotesCanvas({ notes }: Props) {
                       onResize={(w, h, commit) => handleResize(note.id, w, h, commit)}
                       onBringToFront={() => bringToFront(note.id)}
                       onToggleCollapse={() => toggleCollapse(note.id)}
-                      onTrash={() => trashNote(note.id)}
                     />
                   ))}
                 </div>
               </div>
+
+              {/* Drop here to trash. Rendered inside DndContext but outside
+                  the scaled board so it stays fixed to the viewport. */}
+              <TrashDropZone dragging={activeDragId !== null} />
             </DndContext>
           )}
         </div>
@@ -348,7 +395,54 @@ export function NotesCanvas({ notes }: Props) {
             </button>
           </div>
         )}
+
+        {/* Undo toast for the last drag-to-trash */}
+        {undoToast && (
+          <div className="absolute bottom-4 left-1/2 z-40 -translate-x-1/2 transform">
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-surface/95 px-4 py-2 shadow-md backdrop-blur">
+              <span className="text-xs text-foreground">
+                Trashed &ldquo;{undoToast.title}&rdquo;
+              </span>
+              <button
+                onClick={handleUndoTrash}
+                className="rounded px-2 py-1 text-xs font-medium text-foreground underline-offset-2 hover:underline"
+              >
+                Undo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+interface TrashDropZoneProps {
+  dragging: boolean
+}
+
+function TrashDropZone({ dragging }: TrashDropZoneProps) {
+  const { isOver, setNodeRef } = useDroppable({ id: TRASH_DROP_ID })
+  // Hidden when nothing's being dragged so it doesn't add chrome to a quiet
+  // canvas; appears (and brightens) the moment the user picks up a card.
+  return (
+    <div
+      ref={setNodeRef}
+      aria-label="Drop here to trash"
+      className={`fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full border-2 border-dashed px-4 py-3 shadow-md backdrop-blur transition-all ${
+        dragging ? 'pointer-events-auto opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-95'
+      } ${
+        isOver
+          ? 'border-red-500 bg-red-500/15 text-red-600 dark:text-red-400'
+          : 'border-border bg-surface/95 text-muted-fg'
+      }`}
+    >
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.5 4h11M6 4V2.5h4V4M5 4l.5 9h5L11 4" />
+      </svg>
+      <span className="text-xs font-medium">
+        {isOver ? 'Release to trash' : 'Drop to trash'}
+      </span>
     </div>
   )
 }

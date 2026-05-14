@@ -99,6 +99,13 @@ describe('createNote', () => {
     )
   })
 
+  it('inserts with the given rounded zIndex', async () => {
+    await createNote({ zIndex: 5.7 })
+    expect(mockChain.values).toHaveBeenCalledWith(
+      expect.objectContaining({ zIndex: 6 }),
+    )
+  })
+
   it('returns the created note', async () => {
     const result = await createNote()
     expect(result).toEqual(mockNote)

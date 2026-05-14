@@ -8,7 +8,6 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDebouncedCallback } from 'use-debounce'
 import { updateNote, updateNoteColor } from '@/lib/actions/notes'
 import { NOTE_COLOR_KEYS, NOTE_SWATCHES, noteColorClass } from '@/lib/note-colors'
-import { MoreMenu } from '@/components/notes/MoreMenu'
 import type { NoteWithTags } from '@/components/notes/NotesCanvas'
 
 // Heavy: CodeMirror only loads when a card actually enters edit mode.
@@ -51,7 +50,6 @@ interface Props {
   onResize: (w: number, h: number, commit: boolean) => void
   onBringToFront: () => void
   onToggleCollapse: () => void
-  onTrash: () => void
 }
 
 export function NoteCard({
@@ -66,7 +64,6 @@ export function NoteCard({
   onResize,
   onBringToFront,
   onToggleCollapse,
-  onTrash,
 }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(() => autoEdit)
@@ -231,9 +228,8 @@ export function NoteCard({
             {collapsed ? <path d="M4 6l4 4 4-4" /> : <path d="M4 10l4-4 4 4" />}
           </svg>
         </button>
-        {/* Trash lives behind the overflow menu (with confirmation) so it's
-            not adjacent to the commonly-clicked expand/collapse buttons. */}
-        <MoreMenu onTrash={onTrash} className="ml-1" />
+        {/* Trashing happens by dragging the card onto the trash zone in the
+            canvas's bottom-left corner — see TrashDropZone in NotesCanvas. */}
       </div>
 
       {/* Title row */}

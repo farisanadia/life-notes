@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 import { useDebouncedCallback } from 'use-debounce'
 import { updateNote, updateNoteColor, trashNote } from '@/lib/actions/notes'
 import { NOTE_COLOR_KEYS, NOTE_SWATCHES, noteColorClass } from '@/lib/note-colors'
-import { MoreMenu } from '@/components/notes/MoreMenu'
 import type { Note } from '@/lib/db/schema'
 
 // CodeMirror is heavy — load on demand.
@@ -89,7 +88,7 @@ export function NoteEditor({ note }: Props) {
           )}
         </div>
 
-        {/* Toolbar row: color picker on the left, overflow menu on the right */}
+        {/* Toolbar row: color picker on the left, single-click trash on the right */}
         <div className="flex items-center justify-between gap-3 px-5 pb-1">
           <div className="flex gap-1">
             {NOTE_COLOR_KEYS.map(c => (
@@ -103,7 +102,19 @@ export function NoteEditor({ note }: Props) {
               />
             ))}
           </div>
-          <MoreMenu onTrash={handleTrash} />
+          {/* No two-click confirmation: trashed notes are recoverable from the
+              undo toast on the canvas (and from the trash list, future). */}
+          <button
+            type="button"
+            onClick={handleTrash}
+            aria-label="Move note to trash"
+            title="Move to trash"
+            className="rounded-md p-1 text-neutral-600 transition-colors hover:bg-black/10 hover:text-red-600 dark:hover:text-red-500"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2.5 4h11M6 4V2.5h4V4M5 4l.5 9h5L11 4" />
+            </svg>
+          </button>
         </div>
 
         {/* Live-preview editor body */}

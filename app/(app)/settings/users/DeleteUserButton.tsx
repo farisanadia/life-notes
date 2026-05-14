@@ -8,8 +8,9 @@ interface Props {
   username: string
 }
 
-// Two-click delete: first click arms the button, second deletes. Same pattern
-// as the MoreMenu trash on cards — keep destructive actions intentional.
+// Two-click delete: first click arms the button, second deletes. Cards trash
+// via drag-to-zone instead, but for user accounts the action has no obvious
+// drag target so we keep the explicit confirm.
 const ARM_TIMEOUT_MS = 3000
 
 export function DeleteUserButton({ id, username }: Props) {

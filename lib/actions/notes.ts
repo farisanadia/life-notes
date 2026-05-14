@@ -7,9 +7,10 @@ import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function createNote(opts?: {
-  folderId?: string
+  folderId?:  string
   positionX?: number
   positionY?: number
+  zIndex?:    number
 }) {
   const userId = await requireAuthStrict()
 
@@ -20,6 +21,7 @@ export async function createNote(opts?: {
       folderId:  opts?.folderId ?? null,
       positionX: opts?.positionX != null ? Math.round(opts.positionX) : 40,
       positionY: opts?.positionY != null ? Math.round(opts.positionY) : 40,
+      zIndex:    opts?.zIndex    != null ? Math.round(opts.zIndex)    : 0,
     })
     .returning()
 
