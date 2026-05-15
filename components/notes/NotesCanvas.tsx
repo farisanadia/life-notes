@@ -264,18 +264,6 @@ export function NotesCanvas({ notes }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <h1 className="text-lg font-semibold text-foreground">All Notes</h1>
-        <button
-          onClick={handleNewNote}
-          disabled={isCreating}
-          className="text-sm bg-foreground text-background px-3 py-1.5 rounded-md hover:opacity-80 transition-opacity disabled:opacity-50"
-        >
-          {isCreating ? 'Adding…' : 'New note'}
-        </button>
-      </div>
-
       {/* Tag filter bar */}
       {allTags.length > 0 && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border overflow-x-auto">
@@ -312,7 +300,7 @@ export function NotesCanvas({ notes }: Props) {
           {notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-fg gap-2">
               <p className="text-sm">No notes yet.</p>
-              <p className="text-xs">Click &ldquo;New note&rdquo; to get started.</p>
+              <p className="text-xs">Tap the + button to get started.</p>
             </div>
           ) : (
             <DndContext
@@ -362,9 +350,34 @@ export function NotesCanvas({ notes }: Props) {
           )}
         </div>
 
-        {/* Zoom control — fixed in the viewport corner */}
+        {/* Floating add-note button — primary action */}
+        <button
+          onClick={handleNewNote}
+          disabled={isCreating}
+          aria-label={isCreating ? 'Adding note' : 'New note'}
+          title="New note"
+          className="absolute bottom-4 right-4 z-30 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'var(--accent-blue)' }}
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+        {/* Zoom control — fixed in the viewport corner, left of the add button */}
         {notes.length > 0 && (
-          <div className="absolute bottom-4 right-4 flex items-center gap-1 rounded-lg border border-border bg-surface/95 px-1 py-1 shadow-md backdrop-blur">
+          <div className="absolute bottom-4 right-24 flex items-center gap-1 rounded-lg border border-border bg-surface/95 px-1 py-1 shadow-md backdrop-blur">
             <button
               onClick={() => zoomBy(0.8)}
               aria-label="Zoom out"

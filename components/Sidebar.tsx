@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ThemeToggle } from './ThemeToggle'
 import { signOutAction } from '@/lib/actions/auth'
 import type { Folder, Tag } from '@/lib/db/schema'
 
@@ -33,12 +32,6 @@ export function Sidebar({ folders, tags, isAdmin }: Props) {
 
   return (
     <aside className="w-60 shrink-0 border-r border-border flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-foreground">Life Notes</span>
-        <ThemeToggle />
-      </div>
-
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
         {navLink('/notes', 'All Notes')}

@@ -17,6 +17,9 @@
   --color-border:         var(--border);
   --color-surface:        var(--surface);
   --color-surface-hover:  var(--surface-hover);
+  --color-accent-blue:    var(--accent-blue);
+  --color-accent-orange:  var(--accent-orange);
+  --color-accent-red:     var(--accent-red);
 }
 
 /* ── Light theme ────────────────────────────────────────────────────────── */
@@ -28,6 +31,9 @@
   --border:        #e5e5e5;
   --surface:       #ffffff;
   --surface-hover: #f5f5f5;
+  --accent-blue:   #274254;
+  --accent-orange: #cb5201;
+  --accent-red:    #a22c29;
 }
 
 /* ── Dark theme ─────────────────────────────────────────────────────────── */
@@ -39,6 +45,9 @@
   --border:        #262626;
   --surface:       #111111;
   --surface-hover: #1a1a1a;
+  --accent-blue:   #274254;
+  --accent-orange: #cb5201;
+  --accent-red:    #a22c29;
 }
 
 /* ── Base styles ────────────────────────────────────────────────────────── */
