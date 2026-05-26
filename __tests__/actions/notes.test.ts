@@ -22,14 +22,23 @@ const { mockChain } = vi.hoisted(() => {
 
 vi.mock('@/lib/db/index', () => ({
   db: {
-    insert: vi.fn(() => mockChain),
-    update: vi.fn(() => mockChain),
-    delete: vi.fn(() => mockChain),
+    insert:  vi.fn(() => mockChain),
+    update:  vi.fn(() => mockChain),
+    delete:  vi.fn(() => mockChain),
+    execute: vi.fn(),
   },
 }))
 
 vi.mock('@/lib/db/schema', () => ({ notes: {} }))
-vi.mock('drizzle-orm', () => ({ eq: vi.fn(), and: vi.fn() }))
+vi.mock('drizzle-orm', () => ({
+  eq:  vi.fn(),
+  and: vi.fn(),
+  // sql tag: pass through args so callers can build templates without errors
+  sql: Object.assign(
+    (..._args: unknown[]) => ({ _tag: 'sql' }),
+    { join: (..._args: unknown[]) => ({ _tag: 'sql.join' }) },
+  ),
+}))
 
 import {
   createNote, updateNote, trashNote, restoreNote,
@@ -47,6 +56,7 @@ const mockRevalidate    = vi.mocked(revalidatePath)
 const mockInsert        = vi.mocked(db.insert)
 const mockUpdate        = vi.mocked(db.update)
 const mockDelete        = vi.mocked(db.delete)
+const mockExecute       = vi.mocked(db.execute)
 
 const USER_ID  = 'user-123'
 const NOTE_ID  = 'note-456'
@@ -154,6 +164,18 @@ describe('updateNote', () => {
     await updateNote(NOTE_ID, { title: 'x' })
     expect(mockRevalidate).toHaveBeenCalledWith('/notes')
     expect(mockRevalidate).toHaveBeenCalledWith(`/notes/${NOTE_ID}`)
+  })
+
+  it('rejects titles over the size cap', async () => {
+    const tooLong = 'a'.repeat(201)
+    await expect(updateNote(NOTE_ID, { title: tooLong })).rejects.toThrow(/Title exceeds/)
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('rejects content over the size cap', async () => {
+    const tooLong = 'a'.repeat(1_000_001)
+    await expect(updateNote(NOTE_ID, { content: tooLong })).rejects.toThrow(/Content exceeds/)
+    expect(mockUpdate).not.toHaveBeenCalled()
   })
 })
 
@@ -290,9 +312,9 @@ describe('updateNotePosition', () => {
     )
   })
 
-  it('revalidates /notes', async () => {
+  it('does not revalidate (pixel-level update, client already optimistic)', async () => {
     await updateNotePosition(NOTE_ID, 10, 20)
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })
 
@@ -309,24 +331,23 @@ describe('updateNotePositions', () => {
   it('no-ops for an empty batch (no auth, no DB, no revalidate)', async () => {
     await updateNotePositions([])
     expect(mockRequireAuthStrict).not.toHaveBeenCalled()
-    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockExecute).not.toHaveBeenCalled()
     expect(mockRevalidate).not.toHaveBeenCalled()
   })
 
-  it('issues one update per note with rounded coordinates', async () => {
+  it('issues a single batched SQL UPDATE regardless of batch size', async () => {
     await updateNotePositions([
       { id: 'a', x: 10.4, y: 20.6 },
       { id: 'b', x: 30.0, y: 40.5 },
+      { id: 'c', x: 50,   y: 60   },
     ])
-    expect(mockUpdate).toHaveBeenCalledTimes(2)
-    expect(mockChain.set).toHaveBeenNthCalledWith(1, { positionX: 10, positionY: 21 })
-    expect(mockChain.set).toHaveBeenNthCalledWith(2, { positionX: 30, positionY: 41 })
+    expect(mockExecute).toHaveBeenCalledOnce()
+    expect(mockUpdate).not.toHaveBeenCalled()
   })
 
-  it('revalidates /notes once', async () => {
+  it('does not revalidate (pixel-level update)', async () => {
     await updateNotePositions([{ id: 'a', x: 0, y: 0 }])
-    expect(mockRevalidate).toHaveBeenCalledTimes(1)
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })
 
@@ -345,9 +366,9 @@ describe('updateNoteColor', () => {
     )
   })
 
-  it('revalidates /notes', async () => {
+  it('does not revalidate (pixel-level update)', async () => {
     await updateNoteColor(NOTE_ID, 'blue')
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })
 
@@ -366,9 +387,9 @@ describe('updateNoteSize', () => {
     )
   })
 
-  it('revalidates /notes', async () => {
+  it('does not revalidate (pixel-level update)', async () => {
     await updateNoteSize(NOTE_ID, 300, 200)
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })
 
@@ -387,9 +408,9 @@ describe('updateNoteZIndex', () => {
     )
   })
 
-  it('revalidates /notes', async () => {
+  it('does not revalidate (pixel-level update)', async () => {
     await updateNoteZIndex(NOTE_ID, 5)
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })
 
@@ -408,8 +429,8 @@ describe('setNoteCollapsed', () => {
     )
   })
 
-  it('revalidates /notes', async () => {
+  it('does not revalidate (pixel-level update)', async () => {
     await setNoteCollapsed(NOTE_ID, false)
-    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+    expect(mockRevalidate).not.toHaveBeenCalled()
   })
 })

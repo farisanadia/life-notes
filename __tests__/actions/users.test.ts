@@ -36,7 +36,13 @@ vi.mock('@/lib/db/index', () => ({
     select: vi.fn(() => mockSelectChain),
   },
 }))
-vi.mock('@/lib/db/schema', () => ({ users: { id: 'id-col' } }))
+vi.mock('@/lib/db/schema', () => ({
+  users:        { id: 'id-col' },
+  notes:        { userId: 'notes-userId' },
+  folders:      { userId: 'folders-userId' },
+  tags:         { userId: 'tags-userId' },
+  vaultEntries: { userId: 'vault-userId' },
+}))
 vi.mock('drizzle-orm', () => ({ eq: vi.fn() }))
 
 import {
@@ -174,7 +180,8 @@ describe('deleteUserAction', () => {
 
   it('deletes a non-admin user and revalidates the settings page', async () => {
     await deleteUserAction('user-1')
-    expect(mockDelete).toHaveBeenCalledOnce()
+    // notes, tags, folders, vaultEntries, users — 5 delete calls
+    expect(mockDelete).toHaveBeenCalledTimes(5)
     expect(mockRevalidate).toHaveBeenCalledWith('/settings/users')
   })
 })

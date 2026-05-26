@@ -31,13 +31,22 @@ export async function deleteTag(id: string) {
 export async function tagNote(noteId: string, tagId: string) {
   const userId = await requireAuthStrict()
 
-  // Verify the note belongs to this user before tagging
+  // Verify both the note AND the tag belong to this user — otherwise a user
+  // could attach another user's tag to their own note (UUIDs make this
+  // practically unguessable, but defense-in-depth).
   const [note] = await db
     .select({ id: notes.id })
     .from(notes)
     .where(and(eq(notes.id, noteId), eq(notes.userId, userId)))
 
   if (!note) throw new Error('Note not found')
+
+  const [tag] = await db
+    .select({ id: tags.id })
+    .from(tags)
+    .where(and(eq(tags.id, tagId), eq(tags.userId, userId)))
+
+  if (!tag) throw new Error('Tag not found')
 
   await db.insert(noteTags).values({ noteId, tagId }).onConflictDoNothing()
 

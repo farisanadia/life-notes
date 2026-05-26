@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { ADMIN_USER_ID, requireAdmin } from '@/lib/auth-guard'
 import { db } from '@/lib/db/index'
-import { users } from '@/lib/db/schema'
+import { users, notes, folders, tags, vaultEntries } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 const USERNAME_REGEX = /^[a-z0-9_-]+$/
@@ -80,7 +80,13 @@ export async function listUsers() {
 }
 
 /**
- * Admin-only: delete a user account. Cannot target the admin user itself.
+ * Admin-only: delete a user account and all their data. Cannot target the
+ * admin user itself.
+ *
+ * The user-scoped tables don't have FKs to `users` (intentional — userId is
+ * plain text), so we delete each one explicitly. Order doesn't matter for
+ * correctness because each table is scoped by `user_id`; note_tags rows hang
+ * off notes/tags via cascade.
  *
  * Note: their existing JWT keeps decoding until expiry (max 7d), but every
  * data query is scoped by userId so the deleted account sees no data. A future
@@ -91,6 +97,10 @@ export async function deleteUserAction(id: string) {
   if (id === ADMIN_USER_ID) {
     throw new Error('The admin account cannot be deleted.')
   }
+  await db.delete(notes).where(eq(notes.userId, id))
+  await db.delete(tags).where(eq(tags.userId, id))
+  await db.delete(folders).where(eq(folders.userId, id))
+  await db.delete(vaultEntries).where(eq(vaultEntries.userId, id))
   await db.delete(users).where(eq(users.id, id))
   revalidatePath('/settings/users')
 }

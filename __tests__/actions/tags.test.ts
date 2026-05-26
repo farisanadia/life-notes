@@ -123,11 +123,22 @@ describe('tagNote', () => {
   })
 
   it('throws when the note does not belong to the user', async () => {
-    mockChain.where.mockResolvedValue([]) // no note found
+    // First select (note lookup) returns empty
+    mockChain.where.mockResolvedValueOnce([])
     await expect(tagNote(NOTE_ID, TAG_ID)).rejects.toThrow('Note not found')
   })
 
-  it('inserts the note-tag relationship', async () => {
+  it("throws when the tag does not belong to the user (defense vs cross-user tagging)", async () => {
+    // First select (note) succeeds, second (tag) returns empty
+    mockChain.where.mockResolvedValueOnce([{ id: NOTE_ID }])
+    mockChain.where.mockResolvedValueOnce([])
+    await expect(tagNote(NOTE_ID, TAG_ID)).rejects.toThrow('Tag not found')
+    expect(mockInsert).not.toHaveBeenCalled()
+  })
+
+  it('inserts the note-tag relationship when both note and tag belong to user', async () => {
+    mockChain.where.mockResolvedValueOnce([{ id: NOTE_ID }])
+    mockChain.where.mockResolvedValueOnce([{ id: TAG_ID }])
     await tagNote(NOTE_ID, TAG_ID)
     expect(mockInsert).toHaveBeenCalledOnce()
     expect(mockChain.values).toHaveBeenCalledWith(
@@ -136,11 +147,15 @@ describe('tagNote', () => {
   })
 
   it('uses onConflictDoNothing (idempotent)', async () => {
+    mockChain.where.mockResolvedValueOnce([{ id: NOTE_ID }])
+    mockChain.where.mockResolvedValueOnce([{ id: TAG_ID }])
     await tagNote(NOTE_ID, TAG_ID)
     expect(mockChain.onConflictDoNothing).toHaveBeenCalledOnce()
   })
 
   it('revalidates the note path', async () => {
+    mockChain.where.mockResolvedValueOnce([{ id: NOTE_ID }])
+    mockChain.where.mockResolvedValueOnce([{ id: TAG_ID }])
     await tagNote(NOTE_ID, TAG_ID)
     expect(mockRevalidate).toHaveBeenCalledWith(`/notes/${NOTE_ID}`)
   })
