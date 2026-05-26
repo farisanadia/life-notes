@@ -76,7 +76,6 @@ export function NotesCanvas({ notes }: Props) {
   const [sizes, setSizes] = useState<Record<string, { w: number; h: number }>>({})
   const [zOrder, setZOrder] = useState<Record<string, number>>({})
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [zoom, setZoom] = useState(1)
   const [autoEditId, setAutoEditId] = useState<string | null>(null)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -248,16 +247,34 @@ export function NotesCanvas({ notes }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sidebar topic click → select every note with that tag (no rearrange).
+  // Sidebar topic click → select every note with that tag (no rearrange) and
+  // pan the viewport to the centre of those notes without changing zoom.
   useEffect(() => {
     const tagId = searchParams.get('select')
     if (!tagId) return
     router.replace('/notes', { scroll: false })
-    const ids = notes
-      .filter(n => n.tags.some(t => t.id === tagId))
-      .map(n => n.id)
-    if (ids.length === 0) return
-    setSelectedIds(new Set(ids))
+    const members = notes.filter(n => n.tags.some(t => t.id === tagId))
+    if (members.length === 0) return
+    setSelectedIds(new Set(members.map(n => n.id)))
+
+    const el = scrollRef.current
+    if (!el) return
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const n of members) {
+      const p = posOf(n)
+      const s = sizeOf(n)
+      const h = collapsedOf(n) ? COLLAPSED_HEIGHT : s.h
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x + s.w > maxX) maxX = p.x + s.w
+      if (p.y + h > maxY) maxY = p.y + h
+    }
+    const z = zoomRef.current
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+    const left = Math.max(0, cx * z - el.clientWidth / 2)
+    const top  = Math.max(0, cy * z - el.clientHeight / 2)
+    el.scrollTo({ left, top, behavior: 'smooth' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -324,20 +341,6 @@ export function NotesCanvas({ notes }: Props) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [marquee, selectedIds, topicView])
-
-  function toggleTag(id: string) {
-    setActiveTags(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function matchesFilter(note: NoteWithTags) {
-    if (activeTags.size === 0) return true
-    return note.tags.some(t => activeTags.has(t.id))
-  }
 
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(String(event.active.id))
@@ -678,35 +681,6 @@ export function NotesCanvas({ notes }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {allTags.length > 0 && (
-        <div className="flex items-center gap-2 px-6 py-2 border-b border-border overflow-x-auto">
-          {allTags.map(tag => {
-            const active = activeTags.has(tag.id)
-            return (
-              <button
-                key={tag.id}
-                onClick={() => toggleTag(tag.id)}
-                className={`text-xs px-2 py-0.5 rounded-full border transition-colors shrink-0 ${
-                  active
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'border-border text-muted-fg hover:text-foreground'
-                }`}
-              >
-                {tag.name}
-              </button>
-            )
-          })}
-          {activeTags.size > 0 && (
-            <button
-              onClick={() => setActiveTags(new Set())}
-              className="text-xs text-muted-fg hover:text-foreground shrink-0 ml-1"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      )}
-
       <div className="relative flex-1 overflow-hidden">
         <div ref={scrollRef} className="h-full overflow-auto dotted-board">
           {notes.length === 0 ? (
@@ -783,7 +757,7 @@ export function NotesCanvas({ notes }: Props) {
                       ? !inTopic
                       : selectedIds.size > 0
                         ? !isSelected
-                        : !matchesFilter(note)
+                        : false
                     const isActive = activeDragId === note.id
                     return (
                       <NoteCard

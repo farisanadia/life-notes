@@ -28,6 +28,17 @@ export async function deleteTag(id: string) {
   revalidatePath('/notes')
 }
 
+export async function updateTagColor(id: string, color: string | null) {
+  const userId = await requireAuthStrict()
+
+  await db
+    .update(tags)
+    .set({ color })
+    .where(and(eq(tags.id, id), eq(tags.userId, userId)))
+
+  revalidatePath('/notes')
+}
+
 export async function tagNote(noteId: string, tagId: string) {
   const userId = await requireAuthStrict()
 

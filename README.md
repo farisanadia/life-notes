@@ -37,10 +37,11 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 - **800ms debounced autosave** on title and content; ⌘B / ⌘I shortcuts in either editor.
 - **Zoom & pan** — buttons + ⌘/ctrl-scroll to zoom toward the cursor (20–100%); a "Fit" button frames every note in view at once for spotting groupings.
 - **Marquee selection** — drag on empty canvas to lasso multiple cards; selected notes drag and trash together.
-- **Topic view** — click a tag in the filter bar to enter a focused layout (`lib/topic-view.ts`) that arranges the tag's notes in a compact grid; non-matching cards are pushed out of the bbox by `lib/displace.ts` so the preview stays uncluttered. Esc exits.
-- **Tag assignment from the canvas** — `TagSelectModal` (multi-select with type-ahead create) is reachable from each card's `MoreMenu`; backed by `tagNote` / `untagNote` server actions.
+- **Topics in the sidebar** — every tag is listed with a coloured dot. Two click targets per topic: clicking the *name* selects every note tagged with it and pans the viewport to their bbox (no rearrange); clicking the *focus icon* enters a "gather" preview (`lib/topic-view.ts`) that arranges them in a compact grid with non-matching cards displaced by `lib/displace.ts`, then offers **Keep arrangement** or Cancel.
+- **Per-topic colours** — pick a swatch when creating a topic in `TagSelectModal`, or click the dot next to a topic in the sidebar to change/clear it later. Tag pills on every note card render in that colour (`tagPillClass`), so a topic is visually identifiable everywhere it appears.
+- **Tag pills with one-click removal** — each tag chip on a card has a hover-revealed × that calls `untagNote` and refreshes.
 - **Safer destructive actions** — trash sits behind a `MoreMenu` overflow with a two-click confirmation (3-second arm window), so it's never adjacent to commonly-clicked controls. Drag a card off-canvas onto the trash zone for one-shot delete.
-- **Resting cards** show rendered markdown (`@uiw/react-md-editor` preview), a hover color picker, expand / collapse / more buttons, and a corner resize handle.
+- **Resting cards** show rendered markdown (`@uiw/react-md-editor` preview), a top-right control row (colour picker · expand · collapse), and a corner resize handle. The colour picker is a 3-dot icon button that opens a small popover of the same 7-swatch palette as topics.
 - **New note** drops a card at the top of the visible stack in immediate edit mode — no extra click.
 - **Click-outside or Escape** exits edit mode.
 - Pin, trash, restore, and delete from the canvas.
@@ -146,7 +147,7 @@ Tables: `users`, `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 npm test
 ```
 
-212+ tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions, the SSRF IP classifier (`lib/ssrf.ts`), the markdown image rewriter (`lib/proxy-img.ts`), the `/api/img-proxy` route handler (auth, URL/port validation, content-type and size guards, outbound request shape), and the pure canvas helpers — marquee hit-testing (`lib/marquee.ts`), topic-view layout (`lib/topic-view.ts`), and bbox displacement (`lib/displace.ts`). Mocks are used for Redis, Neon, NextAuth, and undici — no live connections required.
+238+ tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions, the SSRF IP classifier (`lib/ssrf.ts`), the markdown image rewriter (`lib/proxy-img.ts`), the `/api/img-proxy` route handler (auth, URL/port validation, content-type and size guards, outbound request shape), and the pure canvas helpers — marquee hit-testing (`lib/marquee.ts`), topic-view layout (`lib/topic-view.ts`), and bbox displacement (`lib/displace.ts`). Mocks are used for Redis, Neon, NextAuth, and undici — no live connections required.
 
 ## CI/CD
 
