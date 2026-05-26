@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   description: 'Personal notes, synced across devices',
 }
 
+// CSP nonces require dynamic rendering — statically generated HTML has script
+// tags without the per-request nonce, so the browser blocks every chunk.
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({
   children,
 }: Readonly<{

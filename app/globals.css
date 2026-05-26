@@ -17,6 +17,9 @@
   --color-border:         var(--border);
   --color-surface:        var(--surface);
   --color-surface-hover:  var(--surface-hover);
+  --color-accent-blue:    var(--accent-blue);
+  --color-accent-orange:  var(--accent-orange);
+  --color-accent-red:     var(--accent-red);
 }
 
 /* ── Light theme ────────────────────────────────────────────────────────── */
@@ -28,6 +31,9 @@
   --border:        #e5e5e5;
   --surface:       #ffffff;
   --surface-hover: #f5f5f5;
+  --accent-blue:   #274254;
+  --accent-orange: #cb5201;
+  --accent-red:    #a22c29;
 }
 
 /* ── Dark theme ─────────────────────────────────────────────────────────── */
@@ -39,6 +45,9 @@
   --border:        #262626;
   --surface:       #111111;
   --surface-hover: #1a1a1a;
+  --accent-blue:   #274254;
+  --accent-orange: #cb5201;
+  --accent-red:    #a22c29;
 }
 
 /* ── Base styles ────────────────────────────────────────────────────────── */
@@ -46,4 +55,65 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+
+/* ── Notes board ────────────────────────────────────────────────────────── */
+/* Dotted "jotting pad" surface, distinct from sidebar/header chrome.        */
+.dotted-board {
+  background-color: var(--muted);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+.dark .dotted-board {
+  background-color: #141414;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.1px, transparent 1.2px);
+}
+
+/* Markdown preview sits on a light sticky surface — force dark, transparent text. */
+.sticky-preview .wmde-markdown {
+  background: transparent !important;
+  color: #171717 !important;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.sticky-preview .wmde-markdown * {
+  color: inherit;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+.sticky-preview .wmde-markdown code,
+.sticky-preview .wmde-markdown pre {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+/* Tailwind preflight resets padding and list-style on ul/ol globally;
+   restore them inside the markdown preview. !important to beat the
+   universal `* { padding: 0 }` rule regardless of layer order. */
+.sticky-preview .wmde-markdown ul,
+.sticky-preview .wmde-markdown ol {
+  padding-left: 1.6em !important;
+  margin: 4px 0 !important;
+}
+.sticky-preview .wmde-markdown ul { list-style: disc outside !important; }
+.sticky-preview .wmde-markdown ol { list-style: decimal outside !important; }
+.sticky-preview .wmde-markdown ul ul { list-style: circle outside !important; }
+.sticky-preview .wmde-markdown ul ul ul { list-style: square outside !important; }
+.sticky-preview .wmde-markdown li { margin-left: 0 !important; }
+
+/* HR: explicit thin dark rule. Tailwind preflight sets `* { border: 0 solid }`
+   and gives hr a 1px top border that inherits currentColor — which on coloured
+   cards perceptually shifts to the complementary hue. Force colour + width. */
+.sticky-preview .wmde-markdown hr {
+  border: 0 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.28) !important;
+  background: transparent !important;
+  height: 0 !important;
+  margin: 8px 0 !important;
+  padding: 0 !important;
+}
+.sticky-preview .wmde-markdown hr::before,
+.sticky-preview .wmde-markdown hr::after { display: none !important; }
+
+/* Live editor sizing: comfortable inside the full editor screen, compact on cards. */
+.cm-variant-editor .cm-content {
+  font-size: 14.5px !important;
+  line-height: 1.6 !important;
 }

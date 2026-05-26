@@ -57,13 +57,8 @@ export async function loginAction(
 
 export async function signOutAction() {
   const session = await auth()
-  console.log('[signOutAction] session:', JSON.stringify(session, null, 2))
   if (session?.user?.jti) {
-    console.log('[signOutAction] revoking jti:', session.user.jti)
     await revokeSession(session.user.jti)
-    console.log('[signOutAction] revoked ok')
-  } else {
-    console.log('[signOutAction] no jti found — skipping revocation')
   }
   await signOut({ redirectTo: '/login' })
 }

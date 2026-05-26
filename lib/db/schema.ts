@@ -2,12 +2,30 @@ import {
   pgTable,
   text,
   boolean,
+  integer,
   timestamp,
   primaryKey,
   unique,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+// The single env-based admin (id='admin') is upserted on each successful login
+// so it always has a row alongside accounts the admin creates from the UI.
+// `userId` columns on other tables are plain text (no FK) — keeps deletion of
+// a user's data the app's responsibility, matching how the app worked before
+// multi-user existed.
+
+export const users = pgTable('users', {
+  id:           text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  username:     text('username').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  // Usernames stored lowercased; uniqueness is plain (no CITEXT needed).
+  unique('users_username_unique').on(t.username),
+])
 
 // ─── Folders ─────────────────────────────────────────────────────────────────
 
@@ -43,6 +61,13 @@ export const notes = pgTable('notes', {
   folderId:  text('folder_id').references(() => folders.id, { onDelete: 'set null' }),
   isPinned:  boolean('is_pinned').default(false).notNull(),
   isTrashed: boolean('is_trashed').default(false).notNull(),
+  positionX:   integer('position_x').default(0).notNull(),
+  positionY:   integer('position_y').default(0).notNull(),
+  width:       integer('width').default(240).notNull(),
+  height:      integer('height').default(220).notNull(),
+  zIndex:      integer('z_index').default(0).notNull(),
+  isCollapsed: boolean('is_collapsed').default(false).notNull(),
+  color:       text('color').default('yellow').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -100,3 +125,4 @@ export type Note        = typeof notes.$inferSelect
 export type Tag         = typeof tags.$inferSelect
 export type NoteTag     = typeof noteTags.$inferSelect
 export type VaultEntry  = typeof vaultEntries.$inferSelect
+export type User        = typeof users.$inferSelect
