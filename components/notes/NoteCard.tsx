@@ -55,10 +55,19 @@ interface Props {
   zoom: number
   collapsed: boolean
   dimmed: boolean
+  selected: boolean
+  disabled: boolean
+  /** If true (≥1 note already selected), plain click toggles selection. */
+  selectionActive: boolean
+  /** Live drag-translate (in canvas px) for a non-active card riding a
+   *  multi-selection drag. dnd-kit's transform takes precedence for the
+   *  card that's actually being grabbed. */
+  liveOffset: { x: number; y: number } | null
   autoEdit: boolean
   onResize: (w: number, h: number, commit: boolean) => void
   onBringToFront: () => void
   onToggleCollapse: () => void
+  onToggleSelect: () => void
 }
 
 export function NoteCard({
@@ -69,10 +78,15 @@ export function NoteCard({
   zoom,
   collapsed,
   dimmed,
+  selected,
+  disabled,
+  selectionActive,
+  liveOffset,
   autoEdit,
   onResize,
   onBringToFront,
   onToggleCollapse,
+  onToggleSelect,
 }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(() => autoEdit)
@@ -87,7 +101,7 @@ export function NoteCard({
   const resizeStart = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: note.id, disabled: resizing })
+    useDraggable({ id: note.id, disabled: resizing || disabled })
 
   // The board is scaled by `zoom`; counter-scale the drag translate so the
   // card tracks the cursor 1:1 instead of lagging behind.
@@ -144,11 +158,18 @@ export function NoteCard({
   }
 
   function handleClick(e: React.MouseEvent) {
-    if (editing) return
+    if (editing || disabled) return
     const start = downPos.current
     if (start) {
       const moved = Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y)
       if (moved > 4) return // it was a drag, not a click
+    }
+    // Cmd/Ctrl-click toggles selection. Plain click also toggles if a selection
+    // is already in progress — otherwise enters edit mode.
+    if (e.metaKey || e.ctrlKey || selectionActive) {
+      e.stopPropagation()
+      onToggleSelect()
+      return
     }
     setEditing(true)
   }
@@ -200,12 +221,26 @@ export function NoteCard({
         width: size.w,
         height: collapsed ? COLLAPSED_HEIGHT : size.h,
         zIndex: isDragging ? 9999 : z,
-        transform: CSS.Translate.toString(dragTransform),
+        transform: dragTransform
+          ? CSS.Translate.toString(dragTransform)
+          : liveOffset
+            ? `translate3d(${liveOffset.x}px, ${liveOffset.y}px, 0)`
+            : undefined,
       }}
-      className={`group absolute flex flex-col overflow-hidden rounded-md border border-black/5 p-3 shadow-sm transition-opacity ${noteColorClass(
+      className={`group absolute flex flex-col overflow-hidden rounded-md p-3 shadow-sm transition-[opacity,box-shadow] ${noteColorClass(
         color,
       )} ${dimmed ? 'opacity-30' : 'opacity-100'} ${editing ? '' : 'select-none'} ${
-        isDragging ? 'cursor-grabbing shadow-lg' : editing ? '' : 'cursor-pointer hover:shadow-md'
+        selected
+          ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent border-transparent'
+          : 'border border-black/5'
+      } ${
+        isDragging
+          ? 'cursor-grabbing shadow-lg'
+          : editing
+            ? ''
+            : disabled
+              ? 'cursor-default'
+              : 'cursor-pointer hover:shadow-md'
       }`}
     >
       {/* Hover controls: expand · collapse · trash */}

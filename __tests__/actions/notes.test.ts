@@ -34,7 +34,8 @@ vi.mock('drizzle-orm', () => ({ eq: vi.fn(), and: vi.fn() }))
 import {
   createNote, updateNote, trashNote, restoreNote,
   deleteNote, pinNote, moveNote,
-  updateNotePosition, updateNoteColor, updateNoteSize,
+  updateNotePosition, updateNotePositions,
+  updateNoteColor, updateNoteSize,
   updateNoteZIndex, setNoteCollapsed,
 } from '@/lib/actions/notes'
 import { requireAuthStrict } from '@/lib/auth-guard'
@@ -291,6 +292,40 @@ describe('updateNotePosition', () => {
 
   it('revalidates /notes', async () => {
     await updateNotePosition(NOTE_ID, 10, 20)
+    expect(mockRevalidate).toHaveBeenCalledWith('/notes')
+  })
+})
+
+// ── updateNotePositions ───────────────────────────────────────────────────────
+
+describe('updateNotePositions', () => {
+  it('requires authentication when there are updates', async () => {
+    mockRequireAuthStrict.mockRejectedValue(new Error('Unauthorized'))
+    await expect(
+      updateNotePositions([{ id: 'a', x: 1, y: 2 }]),
+    ).rejects.toThrow('Unauthorized')
+  })
+
+  it('no-ops for an empty batch (no auth, no DB, no revalidate)', async () => {
+    await updateNotePositions([])
+    expect(mockRequireAuthStrict).not.toHaveBeenCalled()
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockRevalidate).not.toHaveBeenCalled()
+  })
+
+  it('issues one update per note with rounded coordinates', async () => {
+    await updateNotePositions([
+      { id: 'a', x: 10.4, y: 20.6 },
+      { id: 'b', x: 30.0, y: 40.5 },
+    ])
+    expect(mockUpdate).toHaveBeenCalledTimes(2)
+    expect(mockChain.set).toHaveBeenNthCalledWith(1, { positionX: 10, positionY: 21 })
+    expect(mockChain.set).toHaveBeenNthCalledWith(2, { positionX: 30, positionY: 41 })
+  })
+
+  it('revalidates /notes once', async () => {
+    await updateNotePositions([{ id: 'a', x: 0, y: 0 }])
+    expect(mockRevalidate).toHaveBeenCalledTimes(1)
     expect(mockRevalidate).toHaveBeenCalledWith('/notes')
   })
 })

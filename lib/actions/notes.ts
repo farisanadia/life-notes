@@ -114,6 +114,24 @@ export async function updateNotePosition(id: string, x: number, y: number) {
   revalidatePath('/notes')
 }
 
+export async function updateNotePositions(
+  updates: { id: string; x: number; y: number }[],
+) {
+  if (updates.length === 0) return
+  const userId = await requireAuthStrict()
+
+  await Promise.all(
+    updates.map(u =>
+      db
+        .update(notes)
+        .set({ positionX: Math.round(u.x), positionY: Math.round(u.y) })
+        .where(and(eq(notes.id, u.id), eq(notes.userId, userId))),
+    ),
+  )
+
+  revalidatePath('/notes')
+}
+
 export async function updateNoteColor(id: string, color: string) {
   const userId = await requireAuthStrict()
 
