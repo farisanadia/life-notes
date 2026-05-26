@@ -19,7 +19,7 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 
 ## Features by Phase
 
-> **Status: actively building Phase 2.** Phase 1 is complete and deployed; Phase 2 has the spatial canvas, live-preview editor, and multi-user accounts done — folders and tag grouping are next.
+> **Status: Phase 2 complete.** Phase 1 and Phase 2 are deployed; Phase 3 (full-text search) is next.
 
 ### Phase 1 — Foundation & Auth (complete)
 - Single-user credential login (username + bcrypt password) — extended into the multi-user model in Phase 2
@@ -29,27 +29,26 @@ A self-hosted personal notes app at [notes.farisanadia.com](https://notes.farisa
 - Light / dark / system theme toggle (persisted via next-themes)
 - Route protection via `proxy.ts`
 
-### Phase 2 — Notes UX & Multi-User (in progress)
+### Phase 2 — Notes UX & Multi-User (complete)
 
-**Done so far:**
 - **Spatial canvas**, not a list — notes are draggable sticky cards on a free 2D board (`@dnd-kit`). Position, size, color, z-order, and collapsed state all persist per note.
 - **Inline live-preview editing** on each card via CodeMirror 6 with a custom `livePreview` extension: markdown is styled as you type (bold, italic, code, headings, bullets, etc.) and syntax markers hide off the active line — Obsidian-style.
 - **Opt-in full-screen editor** at `/notes/[id]`, reached via the expand icon on a card. Same CodeMirror live editor but roomier, with a formatting toolbar (bold / italic / strikethrough / inline code / heading / list / task list / quote / code block / table / horizontal rule / image / link).
 - **800ms debounced autosave** on title and content; ⌘B / ⌘I shortcuts in either editor.
 - **Zoom & pan** — buttons + ⌘/ctrl-scroll to zoom toward the cursor (20–100%); a "Fit" button frames every note in view at once for spotting groupings.
-- **Safer destructive actions** — trash sits behind a `MoreMenu` overflow with a two-click confirmation (3-second arm window), so it's never adjacent to commonly-clicked controls.
+- **Marquee selection** — drag on empty canvas to lasso multiple cards; selected notes drag and trash together.
+- **Topic view** — click a tag in the filter bar to enter a focused layout (`lib/topic-view.ts`) that arranges the tag's notes in a compact grid; non-matching cards are pushed out of the bbox by `lib/displace.ts` so the preview stays uncluttered. Esc exits.
+- **Tag assignment from the canvas** — `TagSelectModal` (multi-select with type-ahead create) is reachable from each card's `MoreMenu`; backed by `tagNote` / `untagNote` server actions.
+- **Safer destructive actions** — trash sits behind a `MoreMenu` overflow with a two-click confirmation (3-second arm window), so it's never adjacent to commonly-clicked controls. Drag a card off-canvas onto the trash zone for one-shot delete.
 - **Resting cards** show rendered markdown (`@uiw/react-md-editor` preview), a hover color picker, expand / collapse / more buttons, and a corner resize handle.
-- **Tag filter bar** at the top of the canvas dims non-matching cards (visual filter only — see "Still to do" for assignment).
-- **New note** drops a card at the centre of the current viewport in immediate edit mode — no extra click.
+- **New note** drops a card at the top of the visible stack in immediate edit mode — no extra click.
 - **Click-outside or Escape** exits edit mode.
 - Pin, trash, restore, and delete from the canvas.
 - **Multi-user accounts**: one env-seeded admin (`ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH_B64`) plus additional accounts created admin-side at `/settings/users`. Per-user data isolation enforced by `userId` scoping on every server query.
 
-**Still to do:**
-- **Folder management from the UI** — schema and `createFolder` / `moveNote` server actions exist, but no canvas affordance to create folders or assign notes to them. Sidebar lists folders but `/folders/[id]` pages don't exist yet.
-- **Tag assignment from the UI** — `tagNote` / `untagNote` actions exist, but the canvas has no way to add or remove tags on a card. Likewise no `/tags/[id]` page.
-- **Visual grouping on the canvas** by folder or tag (e.g. coloured zones, collapsing by group).
-- **Vault UI** — sidebar link exists, page is empty (Phase 4 territory).
+**Deferred to later phases:**
+- Per-folder pages (`/folders/[id]`) and per-tag pages (`/tags/[id]`) — the sidebar lists them, but routing into a dedicated view is not yet wired.
+- Vault UI — sidebar link exists, page is empty (Phase 4 territory).
 
 ### Phase 3 — Full-Text Search (planned)
 - PostgreSQL `tsvector` GENERATED column with GIN index
@@ -87,6 +86,8 @@ Per-request nonce CSP applied to every response:
 - `'unsafe-eval'` is added only in dev for React's error overlay.
 
 Companion headers: `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a lockdown `Permissions-Policy`, and `Strict-Transport-Security: max-age=31536000; includeSubDomains` in production.
+
+Because nonces must change per request, the root layout opts into dynamic rendering (`export const dynamic = 'force-dynamic'`). Without this, Vercel statically prerenders pages and the cached HTML's `<script>` tags carry no nonce — every chunk gets blocked and React never hydrates.
 
 ### Markdown XSS hardening
 `@uiw/react-markdown-preview` parses raw HTML by default. The render pipeline now runs `rehype-sanitize` with the default GitHub schema, which strips `<script>`, `<iframe>`, `<object>`, event handlers, and `javascript:` URLs before any DOM commit.
@@ -145,8 +146,10 @@ Tables: `users`, `notes`, `folders`, `tags`, `note_tags`, `vault_entries`
 npm test
 ```
 
-212 tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions, the SSRF IP classifier (`lib/ssrf.ts`), the markdown image rewriter (`lib/proxy-img.ts`), and the `/api/img-proxy` route handler (auth, URL/port validation, content-type and size guards, outbound request shape). Mocks are used for Redis, Neon, NextAuth, and undici — no live connections required.
+212+ tests covering auth guards (including `requireAdmin` / `requireAdminAuth`), rate limiting, login action, all user/note/folder/tag server actions, the SSRF IP classifier (`lib/ssrf.ts`), the markdown image rewriter (`lib/proxy-img.ts`), the `/api/img-proxy` route handler (auth, URL/port validation, content-type and size guards, outbound request shape), and the pure canvas helpers — marquee hit-testing (`lib/marquee.ts`), topic-view layout (`lib/topic-view.ts`), and bbox displacement (`lib/displace.ts`). Mocks are used for Redis, Neon, NextAuth, and undici — no live connections required.
 
 ## CI/CD
 
 GitHub Actions runs `tsc` and `vitest` on every push and pull request targeting `main`. Merging to `main` triggers an automatic production deployment on Vercel.
+
+Neon is split into two branches: `main` (production) and `dev` (everything else). In Vercel the `DATABASE_URL` env var is scoped — production deploys connect to the prod branch, Preview and Development deploys to the dev branch — so feature branches can't mutate prod data.
