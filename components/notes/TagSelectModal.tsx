@@ -2,17 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { Tag } from '@/lib/db/schema'
+import { NOTE_COLOR_KEYS, NOTE_SWATCHES } from '@/lib/note-colors'
 
 interface Props {
   // Existing tags so typing a known name reuses it instead of duplicating.
   availableTags: Tag[]
   count:    number
   onCancel: () => void
-  onConfirm: (input: { tagId?: string; tagName?: string }) => void
+  onConfirm: (input: { tagId?: string; tagName?: string; color?: string }) => void
 }
 
 export function TagSelectModal({ availableTags, count, onCancel, onConfirm }: Props) {
   const [name, setName] = useState('')
+  const [color, setColor] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -38,7 +40,7 @@ export function TagSelectModal({ availableTags, count, onCancel, onConfirm }: Pr
     if (matchingTag) {
       onConfirm({ tagId: matchingTag.id })
     } else {
-      onConfirm({ tagName: trimmed })
+      onConfirm({ tagName: trimmed, color: color ?? undefined })
     }
   }
 
@@ -89,6 +91,35 @@ export function TagSelectModal({ availableTags, count, onCancel, onConfirm }: Pr
           <p className="mt-2 text-xs text-muted-fg">
             Will reuse the existing <strong>{matchingTag.name}</strong> topic.
           </p>
+        )}
+
+        {!matchingTag && (
+          <div className="mt-4">
+            <p className="text-xs text-muted-fg mb-1.5">Color</p>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setColor(null)}
+                aria-label="No color"
+                title="No color"
+                className={`h-5 w-5 rounded-full border border-neutral-300 bg-transparent ${
+                  color === null ? 'ring-2 ring-foreground ring-offset-1' : ''
+                }`}
+              />
+              {NOTE_COLOR_KEYS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  aria-label={`Color ${c}`}
+                  title={c}
+                  className={`h-5 w-5 rounded-full ${NOTE_SWATCHES[c]} ${
+                    color === c ? 'ring-2 ring-foreground ring-offset-1' : ''
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         <div className="mt-5 flex items-center justify-end gap-2">

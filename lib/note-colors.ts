@@ -34,3 +34,19 @@ export const NOTE_SWATCHES: Record<string, string> = {
 export function noteColorClass(color: string): string {
   return NOTE_COLORS[color] ?? NOTE_COLORS.yellow
 }
+
+// Pill style for tag chips, keyed off the same palette as notes.
+export const TAG_PILL_CLASSES: Record<string, string> = {
+  yellow: 'bg-yellow-200 text-yellow-900',
+  green:  'bg-green-200  text-green-900',
+  blue:   'bg-blue-200   text-blue-900',
+  pink:   'bg-pink-200   text-pink-900',
+  purple: 'bg-purple-200 text-purple-900',
+  orange: 'bg-orange-200 text-orange-900',
+  white:  'bg-white text-neutral-800 border border-neutral-300',
+}
+
+export function tagPillClass(color: string | null | undefined): string {
+  if (!color) return 'bg-black/10 text-neutral-800'
+  return TAG_PILL_CLASSES[color] ?? 'bg-black/10 text-neutral-800'
+}

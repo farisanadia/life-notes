@@ -9,7 +9,8 @@ import { useDebouncedCallback } from 'use-debounce'
 import rehypeSanitize from 'rehype-sanitize'
 import { rehypeProxyImages } from '@/lib/proxy-img'
 import { updateNote, updateNoteColor } from '@/lib/actions/notes'
-import { NOTE_COLOR_KEYS, NOTE_SWATCHES, noteColorClass } from '@/lib/note-colors'
+import { untagNote } from '@/lib/actions/tags'
+import { NOTE_COLOR_KEYS, NOTE_SWATCHES, noteColorClass, tagPillClass } from '@/lib/note-colors'
 import type { NoteWithTags } from '@/components/notes/NotesCanvas'
 
 // Heavy: CodeMirror only loads when a card actually enters edit mode.
@@ -95,6 +96,7 @@ export function NoteCard({
   const [color, setColor] = useState(note.color)
   const [saving, setSaving] = useState(false)
   const [resizing, setResizing] = useState(false)
+  const [colorPickerOpen, setColorPickerOpen] = useState(false)
 
   const cardRef = useRef<HTMLDivElement | null>(null)
   const downPos = useRef<{ x: number; y: number } | null>(null)
@@ -141,6 +143,22 @@ export function NoteCard({
     document.addEventListener('pointerdown', onDown, true)
     return () => document.removeEventListener('pointerdown', onDown, true)
   }, [editing])
+
+  useEffect(() => {
+    if (!colorPickerOpen) return
+    function onDown(e: PointerEvent) {
+      if (!cardRef.current?.contains(e.target as Node)) setColorPickerOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setColorPickerOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [colorPickerOpen])
 
   function setRefs(node: HTMLDivElement | null) {
     setNodeRef(node)
@@ -243,8 +261,48 @@ export function NoteCard({
               : 'cursor-pointer hover:shadow-md'
       }`}
     >
-      {/* Hover controls: expand · collapse · trash */}
-      <div className={`absolute right-1 top-1 z-10 flex gap-0.5 transition-opacity ${controlsVisible}`}>
+      {/* Hover controls: color · expand · collapse · trash */}
+      <div className={`absolute right-1 top-1 z-10 flex items-center gap-0.5 transition-opacity ${controlsVisible}`}>
+        <div className="relative">
+          <button
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => {
+              e.stopPropagation()
+              setColorPickerOpen(v => !v)
+            }}
+            aria-label="Change note color"
+            title="Change color"
+            className="rounded p-0.5 text-neutral-600 hover:bg-black/10"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+              <circle cx="8"    cy="3.6"  r="3.4" fill="#facc15" />
+              <circle cx="3.6"  cy="11.2" r="3.4" fill="#f472b6" />
+              <circle cx="12.4" cy="11.2" r="3.4" fill="#60a5fa" />
+            </svg>
+          </button>
+          {colorPickerOpen && (
+            <div
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+              className="absolute right-0 top-full mt-1 flex gap-1 rounded-md border border-black/10 bg-white/95 p-1 shadow-md backdrop-blur"
+            >
+              {NOTE_COLOR_KEYS.map(c => (
+                <button
+                  key={c}
+                  onClick={e => {
+                    pickColor(e, c)
+                    setColorPickerOpen(false)
+                  }}
+                  onPointerDown={e => e.stopPropagation()}
+                  aria-label={`Set color ${c}`}
+                  className={`h-4 w-4 rounded-full ${NOTE_SWATCHES[c]} ${
+                    color === c ? 'ring-2 ring-neutral-700 ring-offset-1' : ''
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onPointerDown={e => e.stopPropagation()}
           onClick={e => {
@@ -268,8 +326,8 @@ export function NoteCard({
           aria-label={collapsed ? 'Expand note' : 'Collapse note'}
           className="rounded p-0.5 text-neutral-600 hover:bg-black/10"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-            {collapsed ? <path d="M4 6l4 4 4-4" /> : <path d="M4 10l4-4 4 4" />}
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {collapsed ? <path d="M2.5 5.5l5.5 5 5.5-5" /> : <path d="M2.5 10.5l5.5-5 5.5 5" />}
           </svg>
         </button>
         {/* Trashing happens by dragging the card onto the trash zone in the
@@ -319,28 +377,28 @@ export function NoteCard({
               {note.tags.map(tag => (
                 <span
                   key={tag.id}
-                  className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] text-neutral-800"
+                  className={`group/tag inline-flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-xs font-medium ${tagPillClass(tag.color)}`}
                 >
-                  {tag.name}
+                  <span>{tag.name}</span>
+                  <button
+                    type="button"
+                    onPointerDown={e => e.stopPropagation()}
+                    onClick={e => {
+                      e.stopPropagation()
+                      untagNote(note.id, tag.id).then(() => router.refresh())
+                    }}
+                    aria-label={`Remove tag ${tag.name}`}
+                    title={`Remove tag "${tag.name}"`}
+                    className="rounded-full p-0.5 opacity-0 hover:bg-black/20 group-hover/tag:opacity-100"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M3 3l10 10M13 3L3 13" />
+                    </svg>
+                  </button>
                 </span>
               ))}
             </div>
           )}
-
-          {/* Color picker */}
-          <div className={`mt-2 flex shrink-0 gap-1 transition-opacity ${controlsVisible}`}>
-            {NOTE_COLOR_KEYS.map(c => (
-              <button
-                key={c}
-                onClick={e => pickColor(e, c)}
-                onPointerDown={e => e.stopPropagation()}
-                aria-label={`Set color ${c}`}
-                className={`h-3.5 w-3.5 rounded-full ${NOTE_SWATCHES[c]} ${
-                  color === c ? 'ring-2 ring-neutral-700 ring-offset-1' : ''
-                }`}
-              />
-            ))}
-          </div>
 
           {/* Resize handle */}
           <div
