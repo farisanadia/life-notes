@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { headers } from 'next/headers'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import './globals.css'
 
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
 // tags without the per-request nonce, so the browser blocks every chunk.
 export const dynamic = 'force-dynamic'
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // proxy.ts sets x-nonce per request; forward it to next-themes' inline
+  // pre-paint script so CSP doesn't block it.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
     <html
       lang="en"
@@ -34,7 +38,7 @@ export default function RootLayout({
       suppressHydrationWarning  // required by next-themes to avoid mismatch on class attr
     >
       <body className="min-h-full bg-background text-foreground">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider nonce={nonce}>{children}</ThemeProvider>
       </body>
     </html>
   )
